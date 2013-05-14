@@ -49,3 +49,8 @@ class TEstMesh(unittest.TestCase):
         np.testing.assert_array_equal(x, cx)
         np.testing.assert_array_equal(y, cy)
         np.testing.assert_array_equal(z, np.zeros_like(x))
+
+if __name__ == '__main__':
+    unittest.main()
+
+

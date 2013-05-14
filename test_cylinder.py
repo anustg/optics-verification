@@ -105,3 +105,8 @@ class TestFiniteCylinder(unittest.TestCase):
         x, y, z = self.gm.mesh(20)
         self.failUnless(N.allclose(x**2 + y**2, 0.25))
 
+if __name__ == '__main__':
+    unittest.main()
+
+
+# vim: et:ts=4

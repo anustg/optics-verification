@@ -53,3 +53,8 @@ class TestHexDish(unittest.TestCase):
         
         misses = N.isinf(surf.register_incoming(bund))
         N.testing.assert_array_equal(misses, N.r_[True, True, True, True, False, False])
+
+if __name__ == '__main__':
+    unittest.main()
+
+

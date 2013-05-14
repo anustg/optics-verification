@@ -20,3 +20,7 @@ class TestRotateToZ(unittest.TestCase):
         np.testing.assert_array_almost_equal(rots[1], np.c_[
             [0., -1., 0.], [0., 0., -1.], [1., 0., 0.]])
 
+if __name__ == '__main__':
+    unittest.main()
+
+

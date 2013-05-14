@@ -151,3 +151,7 @@ class TestBacksideNormals(unittest.TestCase):
         n = self.gm.get_normals()
         N.testing.assert_array_equal(n, N.tile(N.c_[[0, 0, -1]], (1,4)))
 
+if __name__ == '__main__':
+    unittest.main()
+
+

@@ -43,3 +43,7 @@ class TestInterface(unittest.TestCase):
         self.failUnless(N.all(z <= 1e-15))
         self.failIf(N.any(x**2 + y**2 > 4.0001))
 
+if __name__ == '__main__':
+    unittest.main()
+
+

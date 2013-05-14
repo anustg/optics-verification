@@ -41,3 +41,8 @@ class TestInterface(unittest.TestCase):
         N.testing.assert_array_equal(pts[:2], self._bund.get_vertices()[:2])
         N.testing.assert_array_almost_equal(pts[2], -2*N.sin(N.pi/3))
         
+
+if __name__ == '__main__':
+    unittest.main()
+
+

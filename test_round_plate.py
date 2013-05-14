@@ -34,3 +34,7 @@ class TestRectPlateGM(unittest.TestCase):
         N.testing.assert_array_equal(z, 0) # Easy
         self.failIf(N.any(x**2 + y**2 > 25.001))
 
+if __name__ == '__main__':
+    unittest.main()
+
+

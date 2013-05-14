@@ -40,3 +40,7 @@ class TestTraceProtocol(unittest.TestCase):
         N.testing.assert_array_equal(outg.get_energy(), N.ones(4)*100)
         N.testing.assert_array_equal(outg.get_parents(), N.arange(4))
 
+if __name__ == '__main__':
+    unittest.main()
+
+

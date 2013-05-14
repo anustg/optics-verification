@@ -39,3 +39,8 @@ class TestRectPlateGM(unittest.TestCase):
         N.testing.assert_array_equal(x, cx)
         N.testing.assert_array_equal(y, cy)
         N.testing.assert_array_equal(z, N.zeros_like(x))
+
+if __name__ == '__main__':
+    unittest.main()
+
+

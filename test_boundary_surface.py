@@ -94,3 +94,8 @@ class TestSphereBoundingRect(unittest.TestCase):
         extents = sphere.bounding_rect_for_plane(self.parallel_slanted)
         N.testing.assert_array_almost_equal(extents, \
             (sqrt_h - Reff, sqrt_h + Reff, -Reff, Reff))
+
+if __name__ == '__main__':
+    unittest.main()
+
+

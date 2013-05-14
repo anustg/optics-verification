@@ -187,3 +187,8 @@ class TestLambertian(unittest.TestCase):
         absorbed, hits = receiver.get_all_hits()
         N.testing.assert_array_equal(absorbed, N.tile(N.r_[100, 200, 300, 400], 2))
         N.testing.assert_array_equal(hits, N.tile(correct_pts, (1,2)))
+
+if __name__ == '__main__':
+    unittest.main()
+
+
