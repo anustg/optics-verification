@@ -24,19 +24,55 @@ class TestInfiniteCone(unittest.TestCase):
 
     def test_as_placed(self):
         prm = self.gm.find_intersections(N.eye(4), self.bund)
-        print "prm",prm
+        #print "prm",prm
         N.testing.assert_array_almost_equal(prm, self.prm)
 
         self.gm.select_rays(N.arange(0,3))
 
         nrm = self.gm.get_normals()
-        print "self.nrm\n",self.nrm
-        print "nrm\n",nrm
+        #print "self.nrm\n",self.nrm
+        #print "nrm\n",nrm
         N.testing.assert_array_almost_equal(nrm, self.nrm)
 
         pts = self.gm.get_intersection_points_global()
 
-        print "pts",pts
+        #print "pts",pts
+        N.testing.assert_array_almost_equal(pts, self.pts)
+
+
+class TestInfiniteConeShifted(unittest.TestCase):
+    """
+    Very similar to TestInfiniteCone, but add 'a=-1' to shift the cone
+    apex to z=-1 on the z axis, check that everything still works correctly.
+    """
+    def setUp(self):
+        pos = N.c_[[-1.,0,-1], [2,0,-1], [1,0,1]]
+        dir = N.c_[[0.,0,1], [-1,0,1], [-1,2,0]]
+        self.prm = N.r_[1,N.sqrt(2),N.sqrt(5)]
+        self.pts = N.c_[[-1.,0,0],[1,0,0],[0,2,1]]
+        self.nrm = N.c_[[-1.,0,-1],[1,0,-1],[0,-1,1]]
+
+        dir /= N.sqrt(N.sum(dir**2, axis=0)) # normalise dir
+        self.nrm /= N.sqrt(N.sum(self.nrm**2, axis=0)) # normalise nrm
+
+        self.bund = RayBundle(vertices=pos, directions=dir)
+        self.gm = InfiniteCone(c = 1., a = -1.)
+
+    def test_as_placed(self):
+        prm = self.gm.find_intersections(N.eye(4), self.bund)
+        #print "prm",prm
+        N.testing.assert_array_almost_equal(prm, self.prm)
+
+        self.gm.select_rays(N.arange(0,3))
+
+        nrm = self.gm.get_normals()
+        #print "self.nrm\n",self.nrm
+        #print "nrm\n",nrm
+        N.testing.assert_array_almost_equal(nrm, self.nrm)
+
+        pts = self.gm.get_intersection_points_global()
+
+        #print "pts",pts
         N.testing.assert_array_almost_equal(pts, self.pts)
 
 
