@@ -23,7 +23,7 @@ class TestInfiniteCone(unittest.TestCase):
         self.gm = InfiniteCone(c = 1.)
 
     def test_as_placed1(self):
-        print 'TestInfiniteCone'
+
         prm = self.gm.find_intersections(N.eye(4), self.bund)
         #print "prm",prm
         N.testing.assert_array_almost_equal(prm, self.prm)
@@ -60,7 +60,7 @@ class TestInfiniteConeShifted(unittest.TestCase):
         self.gm = InfiniteCone(c = 1., a = -1.)
 
     def test_as_placed2(self):
-        print 'TestInfiniteConeShifted'
+
         prm = self.gm.find_intersections(N.eye(4), self.bund)
         #print "prm",prm
         N.testing.assert_array_almost_equal(prm, self.prm)
@@ -93,7 +93,7 @@ class TestCone(unittest.TestCase):
         self.gm = Cone(r = 3., h = 3.)
 
     def test_as_placed3(self):
-        print 'TestCone'
+
         #print "ASKING FOR INTERSECTIONS\n"
         prm = self.gm.find_intersections(N.eye(4), self.bund)
         #print "GOT INTERSECTIONS\n"
