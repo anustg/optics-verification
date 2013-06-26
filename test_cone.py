@@ -5,7 +5,7 @@ import numpy as N
 N.set_printoptions(linewidth=150)
 
 from tracer.ray_bundle import RayBundle
-from tracer.cone import InfiniteCone, Cone
+from tracer.cone import InfiniteCone, FiniteCone
 from tracer.spatial_geometry import rotx
 
 class TestInfiniteCone(unittest.TestCase):
@@ -77,7 +77,6 @@ class TestInfiniteConeShifted(unittest.TestCase):
         print "pts",pts
         N.testing.assert_array_almost_equal(pts, self.pts)
 
-
 class TestCone(unittest.TestCase):
     def setUp(self):
         pos = N.c_[[-1.,0,0], [2,0,0], [1,0,2], [4,0,0],[2,0,1]]
@@ -90,7 +89,7 @@ class TestCone(unittest.TestCase):
         self.nrm /= N.sqrt(N.sum(self.nrm**2, axis=0)) # normalise nrm
 
         self.bund = RayBundle(vertices=pos, directions=dir)
-        self.gm = Cone(r = 3., h = 3.)
+        self.gm = FiniteCone(r = 3., h = 3.)
 
     def test_as_placed3(self):
 
