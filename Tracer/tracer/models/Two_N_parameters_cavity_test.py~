@@ -1,0 +1,180 @@
+from tracer.models.Two_N_parameters_cavity import *
+from tracer.surface import *
+from tracer.quadric import *
+from tracer.paraboloid import *
+from tracer.cone import *
+from tracer.cylinder import *
+from tracer.flat_surface import *
+from tracer.assembly import *
+from tracer.optics_callables import *
+from tracer.object import *
+from tracer.spatial_geometry import *
+from tracer.sources import *
+from tracer.tracer_engine import *
+from tracer.CoIn_rendering.rendering import *
+
+import matplotlib.pyplot as plt
+
+sections_before_focus = 1
+apertureRadius = 4.44907348e-01
+frustaRadii = N.array([1.75197306e-01, 5.91918615e-01, 8.29531233e-03, 5.00000000e-02])
+frustaDepths = N.array([5.61715464e-02, 2.02690261e-01, 9.46795682e-01, -7.03091735e-01])
+coneDepth = 8.42940895e-01
+good_data = N.hstack((apertureRadius, frustaRadii, frustaDepths, coneDepth))
+N_el = 4
+eps_wall = 0.1
+absReceiver = 0.95 #N.hstack([1,0.95,0.95,0.95,0.95])
+emsReceiver = 0.85 #N.hstack([1,N.ones(1)*0.85,N.ones(3)*0.79])
+dishDiameter = 25.
+dishFocus = 13.42
+absDish = 0.1
+sigma = 3.1e-3
+max_radius = 1.5/2.
+max_depth = 1.5
+
+if (sections_before_focus!=0.) and (sections_before_focus!=None):
+	aperture_position = -N.sum(good_data[N_el+1:N_el+1+sections_before_focus])
+	print 'aperture pos', aperture_position
+else:
+	aperture_position = 0.
+
+test = TwoNparamcav(apertureRadius, frustaRadii, frustaDepths, coneDepth, eps_wall, absReceiver, emsReceiver, dishDiameter, dishFocus, absDish, sigma, aperture_position=aperture_position, envelope_radius = max_radius+eps_wall, envelope_depth = max_depth+eps_wall)
+
+scn = Renderer(test) 
+scn.show_geom()
+
+test.VF_sim([1,1,1,1],1, precision =0.01)
+
+#test.nrays=1000000
+#TracerEngine(test.Scene)
+#def sim_with_T_guess(test, Tamb, Trec_in, p_in, Trec_out, tube_diameters, nrays, CSR=None):
+
+x = N.hstack([0, N.add.accumulate(frustaDepths), N.sum(frustaDepths)+coneDepth])
+y = N.hstack([apertureRadius, frustaRadii, 0])
+
+#plt.plot(x,y)
+#plt.show()
+
+data = test.sim_with_T_guess(Tamb=298.15, Trec_in=60+273.15, p_in=5e6, Trec_out=500.+273.15, tube_diameters_in=0.015802, tube_diameters_out=0.021340, tube_conductivity=20, nrays=1e4, CSR=0.0225, passive=[-1])
+
+print data
+
+data = N.hstack(data)
+Qnet = data[11] - data[12]
+Qincrec = data[10] - data[16] - data[14] - data[15]
+
+nurec = Qnet/Qincrec
+
+print 'nurec', nurec
+
+'''
+plt.figure()
+
+detailed_results = N.loadtxt('/home/charles/Downloads/V19C01.txt')
+plt.subplot(131)
+plt.plot(detailed_results[:,0],detailed_results[:,1], label='Jose', color = 'r')
+plt.plot(detailed_results[:,0],test.T[1:-1]-273.15, label='Charlie', color = 'r', linestyle = '--')
+plt.subplot(132)
+plt.plot(detailed_results[:,0],detailed_results[:,2], label='Jose', color = 'r')
+plt.plot(detailed_results[:,0],test.T_guess_fluid[1:-1]-273.15, label='Charlie', color = 'r', linestyle = '--')
+plt.subplot(133)
+plt.plot(detailed_results[:,0],detailed_results[:,3]*1000., label='Jose', color = 'r')
+plt.plot(detailed_results[:,0],test.Q[1:-1], label='Charlie', color = 'r', linestyle = '--')
+
+print "Cone emissions:", test.Q[-1]
+print 'Q balance', test.Q[0], N.sum(test.Q)
+'''
+
+'''
+sections_before_focus=1
+apertureRadius = 5.43189679e-01
+frustaRadii = [2.61909692e-01, 3.35655248e-01, 6.06306371e-01, 5.00000000e-02]
+frustaDepths = [1.27553557e-01, 1.20521654e+00, 5.35315922e-02, 1.08555883e-02]
+coneDepth = 9.75684341e-04
+good_data = N.hstack((apertureRadius, frustaRadii, frustaDepths, coneDepth))
+N_el=5
+eps_wall = 0.1
+absReceiver = 0.95#N.hstack([1,0.95,0.95,0.95,0.95])
+emsReceiver = 0.85#N.hstack([1,N.ones(1)*0.85,N.ones(3)*0.79])
+dishDiameter = 25.
+dishFocus = 13.42
+absDish = 0.1
+sigma = 3.1e-3
+
+if (sections_before_focus!=0.) and (sections_before_focus!=None):
+	aperture_position = -N.sum(good_data[N_el:N_el+sections_before_focus])
+else:
+	aperture_position = 0.
+
+test = TwoNparamcav(apertureRadius, frustaRadii, frustaDepths, coneDepth, eps_wall, absReceiver, emsReceiver, dishDiameter, dishFocus, absDish, sigma, aperture_position=aperture_position)
+test.VF_sim([11,45,10,20],1, precision =0.001)
+
+#test.nrays=1000000
+#TracerEngine(test.Scene)
+#def sim_with_T_guess(test, Tamb, Trec_in, p_in, Trec_out, tube_diameters, nrays, CSR=None):
+
+data = test.sim_with_T_guess(G=1000.,Tamb=298.15, Trec_in=60+273.15, p_in=5e6, Trec_out=500+273.15, tube_diameters_in=0.02093, tube_diameters_out=0.02666, tube_conductivity=20, nrays=1e5, CSR=0.0225, passive=[-1])
+
+print "Cone emissions:", test.Q[-1]
+print 'Q balance', test.Q[0], N.sum(test.Q)
+
+detailed_results = N.loadtxt('/home/charles/Downloads/V19C02.txt')
+plt.subplot(131)
+plt.plot(detailed_results[:,0],detailed_results[:,1], label='Jose', color = 'k')
+plt.plot(detailed_results[:,0],test.T[1:-1]-273.15, label='Charlie', color = 'k', linestyle = '--')
+plt.subplot(132)
+plt.plot(detailed_results[:,0],detailed_results[:,2], label='Jose', color = 'k')
+plt.plot(detailed_results[:,0],test.T_guess_fluid[1:-1]-273.15, label='Charlie', color = 'k', linestyle = '--')
+plt.subplot(133)
+plt.plot(detailed_results[:,0],detailed_results[:,3]*1000., label='Jose', color = 'k')
+plt.plot(detailed_results[:,0],test.Q[1:-1], label='Charlie', color = 'k', linestyle = '--')
+
+sections_before_focus=1
+apertureRadius = 6.01936454e-01         
+frustaRadii = [2.83264131e-01, 4.31811565e-01, 4.65098147e-01, 5.00000000e-02]
+frustaDepths = [1.16749294e-01, 5.96921999e-02, 1.08811645e+00, 7.40524986e-02]
+coneDepth = 8.91987825e-03
+good_data = N.hstack((apertureRadius, frustaRadii, frustaDepths, coneDepth))
+N_el=5
+eps_wall = 0.1
+absReceiver = 0.95#N.hstack([1,0.95,0.95,0.95,0.95])
+emsReceiver = 0.85#N.hstack([1,N.ones(1)*0.85,N.ones(3)*0.79])
+dishDiameter = 25.
+dishFocus = 13.42
+absDish = 0.1
+sigma = 3.1e-3
+
+if (sections_before_focus!=0.) and (sections_before_focus!=None):
+	aperture_position = -N.sum(good_data[N_el:N_el+sections_before_focus])
+else:
+	aperture_position = 0.
+
+test = TwoNparamcav(apertureRadius, frustaRadii, frustaDepths, coneDepth, eps_wall, absReceiver, emsReceiver, dishDiameter, dishFocus, absDish, sigma, aperture_position=aperture_position)
+test.VF_sim([12,6,40,15],1, precision =0.001)
+
+#test.nrays=1000000
+#TracerEngine(test.Scene)
+#def sim_with_T_guess(test, Tamb, Trec_in, p_in, Trec_out, tube_diameters, nrays, CSR=None):
+
+data = test.sim_with_T_guess(G=1000.,Tamb=298.15, Trec_in=60+273.15, p_in=5e6, Trec_out=500+273.15, tube_diameters_in=0.02093, tube_diameters_out=0.02666, tube_conductivity=20, nrays=1e5, CSR=0.0225, passive=[-1])
+
+detailed_results = N.loadtxt('/home/charles/Downloads/V19C03.txt')
+plt.subplot(131)
+plt.plot(detailed_results[:,0],detailed_results[:,1], label='Jose', color = 'g')
+plt.plot(detailed_results[:,0],test.T[1:-1]-273.15, label='Charlie', color = 'g', linestyle = '--')
+plt.subplot(132)
+plt.plot(detailed_results[:,0],detailed_results[:,2], label='Jose', color = 'g')
+plt.plot(detailed_results[:,0],test.T_guess_fluid[1:-1]-273.15, label='Charlie', color = 'g', linestyle = '--')
+plt.subplot(133)
+plt.plot(detailed_results[:,0],detailed_results[:,3]*1000., label='Jose', color = 'g')
+plt.plot(detailed_results[:,0],test.Q[1:-1], label='Charlie', color = 'g', linestyle = '--')
+print "Cone emissions:", test.Q[-1]
+print 'Q balance', test.Q[0], N.sum(test.Q)
+
+plt.legend()
+
+plt.tight_layout()
+
+plt.savefig('/home/charles/Documents/Boulot/USASEC/test_models_full.png', dpi=300)
+plt.show()
+'''

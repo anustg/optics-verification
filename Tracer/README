@@ -1,0 +1,62 @@
+
+tracer - a Pythonic ray-tracing package with solar energy focus.
+
+About
+-----
+Tracer is a ray-tracing engine and suite of tools focused on solar energy 
+applications.
+
+The motivation for writing tracer:
+* Current solutions lack programmability and extensibility
+* Even if you pay megabucks
+* De-facto standard tools of the trade are non-free, so bugfixing
+  etc. depends on someone else,
+* Usability in the solution closest to our budget is poor, and no Linux
+  port is available.
+
+Tracer is written in Python, using NumPy and SciPy for the math side of things.
+
+Status
+------
+The code is advanced enough to produce research. It is currently a programming
+library, with a very rudimentary GUI library under construction.
+
+It is possible to build nested models using flat, paraboloid and spherical
+surfaces, using various optical properties, or to derive new ones. A pillbox
+sunshape model is provided, and any ray bundle can be programmatically created.
+
+There are no provisions for spectral response or polarization yet, but the 
+package is designed to make it easy to add them, and also to remove unnecessary
+features and plug in speed-improving optical and geometrical models that
+utilize problem-specific features.
+
+Installation
+------------
+To install Tracer on your system, run the following from the command line:
+
+  python setup.py install
+
+Before installing, make sure that the following dependencies are installed:
+* NumPy
+* SciPy
+Both available from http://www.scipy.org/
+
+Optional dependencies:
+* Matplotlib - http://matplotlib.sourceforge.net/
+* MayaVi - http://code.enthought.com/projects/mayavi/
+
+To test that things are working, run the test-suite in the tests/
+subdirectory, using nosetests or some similar tool.
+
+Also check out examples/test_case.py as a starting-point to the code. Running it
+requires Matplotlib to be installed. The other examples in that directory
+require MayaVi to run.
+
+Getting Help, Getting Involved
+------------------------------
+Slightly outdated documentation and reference matereial can be found on 
+http://yosefm.github.com/tracer/ - updates are forthcoming as soon as my thesis
+is submitted :)
+
+To get involved, contact me at <mellerf@netvision.net.il>
+
