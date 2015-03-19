@@ -58,8 +58,8 @@ class QuadricGM(GeometryManager):
         A, B, C = self.get_ABC(ray_bundle)
 
         # Identify quadric intersections        
-        delta = B**2 - 4.*A*C
-        any_inters = delta >= 0.
+        delta = B**2. - 4.*A*C
+        any_inters = delta >= 1e-14
         num_inters = any_inters.sum()
         if num_inters == 0:
             self._vertices = vertices
@@ -69,7 +69,7 @@ class QuadricGM(GeometryManager):
         B = B[any_inters]
         C = C[any_inters]        
         
-        delta = N.sqrt(B**2 - 4.*A*C)
+        delta = N.sqrt(B**2. - 4.*A*C)
 
         hits = N.empty((2,num_inters))
         hits.fill(N.nan)

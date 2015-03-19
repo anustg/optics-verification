@@ -10,6 +10,9 @@ References:
 from numpy import random, linalg as LA
 import numpy as N
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+
 
 from .ray_bundle import RayBundle
 from .spatial_geometry import *
@@ -54,6 +57,7 @@ def pillbox_sunshape_directions(num_rays, ang_range):
     xi1 = random.uniform(high=2.*N.pi, size=num_rays)
     xi2 = random.uniform(size=num_rays)
     theta = N.arcsin(N.sin(ang_range)*N.sqrt(xi2))
+
     sin_th = N.sin(theta)
     a = N.vstack((N.cos(xi1)*sin_th, N.sin(xi1)*sin_th , N.cos(theta)))
 
@@ -82,6 +86,8 @@ def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=No
 
 	# FIXME why should 'center' be a column vector... that's just annoying.
 
+    radius = float(radius)
+    radius_in = float(radius_in)
     a = pillbox_sunshape_directions(num_rays, ang_range)
         
     # Rotate to a frame in which <direction> is Z:
@@ -91,7 +97,7 @@ def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=No
     # See [1]
     xi1 = random.uniform(size=num_rays)
     thetas = random.uniform(high=2.*N.pi, size=num_rays)
-    rs = N.sqrt(radius_in**2+xi1*(radius**2-radius_in**2))
+    rs = N.sqrt(radius_in**2.+xi1*(radius**2.-radius_in**2.))
     xs = rs * N.cos(thetas)
     ys = rs * N.sin(thetas)
 
@@ -101,8 +107,7 @@ def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=No
 
     rayb = RayBundle(vertices=vertices_global + center, directions=directions)
     if flux != None:
-        rayb.set_energy(N.pi*(radius**2-radius_in**2)/num_rays*flux*N.ones(num_rays))
-
+        rayb.set_energy(N.pi*(radius**2.-radius_in**2.)/num_rays*flux*N.ones(num_rays))
     return rayb
 
 def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
@@ -125,6 +130,7 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
     theta_tot = 43.6e-3 # rad
 
     # Rays vertices (start positions):
+
     xv1 = random.uniform(size=num_rays)
     phiv = random.uniform(high=2.*N.pi, size=num_rays)
     rs = radius*N.sqrt(xv1)
@@ -145,6 +151,7 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
     # Step 1: integration over the whole Sunshape: 
     theta_dni_int = N.linspace(0.,theta_dni,num=800)
     theta_csr_int = N.linspace(theta_dni,theta_tot,num=800)
+    thetas_int = N.hstack((theta_dni_int,theta_csr_int))
 
     integ_phi_dni = N.zeros(len(theta_dni_int))
     integ_phi_csr = N.zeros(len(theta_csr_int))
@@ -157,6 +164,7 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
         integ_phi_csr[i] = 2.*N.pi*N.exp(kappa)/(gamma+2.)*((theta_csr_int[i+1]*1000.)**(gamma+2.)-(theta_csr_int[i]*1000.)**(gamma+2.))
 
     integ_phi = N.sum(integ_phi_dni)+N.sum(integ_phi_csr)
+    integ_phis = N.hstack((integ_phi_dni, integ_phi_csr))
 
     theta = []
 
@@ -192,7 +200,7 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
     rayb = RayBundle(vertices = vertices_global+center, directions = directions, energy = energy)
     csr_calc = N.sum(energy[aureole])/N.sum(energy)
 
-    return rayb
+    return rayb#, csr_calc, theta, integ_phis, thetas_int, energy
 
 def square_bundle(num_rays, center, direction, width):
     """
@@ -220,15 +228,15 @@ def square_bundle(num_rays, center, direction, width):
     rayb.set_directions(directions)
     return rayb
 
-def vf_frustum_bundle(num_rays, r1, r2, depth, center, direction, rays_in=True):
+def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True):
     '''
     Generate a frustum shaped lambertian source with randomly situated rays to compute view factors. The overall energy of the bundle is 1.
 
     Arguments:
     num_rays - number of rays to generate.
     center - a column 3-array with the 3D coordinate of the center of one of the bases.
-    r1 - The radius of the frustum base which center coordinate has been given.
-    r2 - the radius of the frustum at the other base location.
+    r0 - The radius of the frustum base which center coordinate has been given.
+    r1 - the radius of the frustum at the other base location.
     depth - the depth of the frustum.
     direction - The orientation of the overall bundle. 
                Positive if in the same direction as the depth.
@@ -237,39 +245,32 @@ def vf_frustum_bundle(num_rays, r1, r2, depth, center, direction, rays_in=True):
     Returns:
     A raybundle object with the above characteristics set.
     '''
+    r0 = float(r0)
     r1 = float(r1)
-    r2 = float(r2)
     depth = float(depth)
+    num_rays = float(num_rays)
 
-    c = (r2-r1)/depth
+    dir_flat = pillbox_sunshape_directions(num_rays, N.pi/2.)
 
-    rand = random.uniform(size=num_rays)
+    c = (r1-r0)/depth
 
-    if c>0.:
-        zs = -r1/c+N.sqrt(rand*depth**2+2.*rand*r1*depth/c+r1**2/c**2)
-    else:
-        zs = -r1/c-N.sqrt(rand*depth**2+2.*rand*r1*depth/c+r1**2/c**2)
+    R = random.uniform(size=num_rays)
+
+    zs = (-r0+N.sqrt(r0**2.+R*(r1**2.-r0**2.)))/c
 
     phi_s = 2.*N.pi*random.uniform(size=num_rays)
-
-    rs = r1+c*zs
+    rs = r0+c*zs
     xs = rs * N.cos(phi_s)
     ys = rs * N.sin(phi_s)
 
     theta_s = N.arctan(c)
 
-    dir_flat = pillbox_sunshape_directions(num_rays, N.pi/2.)
-
-    dir_zrot = N.zeros((N.shape(dir_flat)))
-    dir_yrot = N.zeros((N.shape(dir_flat)))    
     yrot = roty(theta_s-N.pi/2.)[:3,:3]
-    dir_yrot = N.dot(yrot,dir_flat)
-
-    for t in range(N.shape(dir_flat)[1]):
+    local_unit = N.zeros((N.shape(dir_flat)))
+    for t in xrange(N.shape(dir_flat)[1]):
         zrot = rotz(phi_s[t])[:3,:3]
-        dir_zrot[:,t] = N.dot(zrot,dir_yrot[:,t])
-
-    local_unit = dir_zrot
+        rot = N.dot(zrot, yrot)
+        local_unit[:,t] = N.dot(rot, dir_flat[:,t])
 
     if rays_in == False:
         local_unit = -local_unit
@@ -280,7 +281,6 @@ def vf_frustum_bundle(num_rays, r1, r2, depth, center, direction, rays_in=True):
     directions = N.dot(perp_rot, local_unit)
 
     energy = N.ones(num_rays)/num_rays
-
     rayb = RayBundle(vertices = vertices_global+center, directions = directions, energy = energy)
 
     return rayb
@@ -303,10 +303,11 @@ def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True):
     '''
     rc = float(rc)
     lc = float(lc)
+    num_rays = float(num_rays)
 
-    zs = random.uniform(size=num_rays, high=0., low=lc)
+    zs = lc*random.uniform(size=num_rays)
 
-    phi_s = random.uniform(size=num_rays, high=2.*N.pi)
+    phi_s = 2.*N.pi*random.uniform(size=num_rays)
 
     xs = rc * N.cos(phi_s)
     ys = rc * N.sin(phi_s)
@@ -314,7 +315,6 @@ def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True):
     dir_flat = pillbox_sunshape_directions(num_rays, N.pi/2.)
 
     dir_zrot = N.zeros((N.shape(dir_flat)))
-    dir_yrot = N.zeros((N.shape(dir_flat)))    
     yrot = roty(N.pi/2.)[:3,:3]
     dir_yrot = N.dot(yrot,dir_flat)
 
@@ -322,7 +322,7 @@ def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True):
         zrot = rotz(phi_s[t])[:3,:3]
         dir_zrot[:,t] = N.dot(zrot,dir_yrot[:,t])
 
-    local_unit = dir_zrot/N.sqrt(N.sum(dir_zrot**2, axis=0))
+    local_unit = dir_zrot/N.sqrt(N.sum(dir_zrot**2., axis=0))
 
     if rays_in == True:
         local_unit = -local_unit
@@ -331,7 +331,10 @@ def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True):
     perp_rot = rotation_to_z(direction)
     vertices_global = N.dot(perp_rot, vertices_local)
     directions = N.dot(perp_rot, local_unit)
-
+    '''
+    plt.hist(vertices_local[2,:]/(N.sqrt(vertices_local[0,:]**2.+vertices_local[1,:]**2.)))
+    plt.show()
+    '''
     energy = N.ones(num_rays)/num_rays
 
     rayb = RayBundle(vertices = vertices_global+center, directions = directions, energy = energy)

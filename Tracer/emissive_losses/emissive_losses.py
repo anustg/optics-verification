@@ -1,5 +1,6 @@
 from math import pi, sqrt, tan
 import numpy as N
+import scipy.linalg as S
 
 def radiosity_RTVF(VF, areas, eps, Tamb, Twall, inc_radiation=None):
     '''
@@ -22,21 +23,19 @@ def radiosity_RTVF(VF, areas, eps, Tamb, Twall, inc_radiation=None):
     q - Net radiative flux (W/m2)
     Q - Net radiative power (W)
     ''' 
-
     A = areas
     n = N.shape(VF)[0]
     sigma = 5.6677e-8 # Stefan-Boltzman constant
     if type(eps) == float:
         eps = N.hstack((1.,N.ones(n-1)*eps))
-
     # The radiosity problem is formulated as [AA][J]=[bb], and the following matrices are
     # defined:
     AA = N.zeros((n,n)) 
     bb = N.ones(n)
 
-    if type(Twall)!=list and type(Twall)!=N.ndarray:
+    if type(Twall)==int or type(Twall)==float:
         Twall = N.ones(n-1)*Twall
-    assert(N.shape(Twall)[0]==n-1), str(N.shape(Twall))+str(n-1)
+
     T = N.hstack((Tamb, Twall))
 
     # radiosity problem, assuming specified boundary temperatures
@@ -45,18 +44,15 @@ def radiosity_RTVF(VF, areas, eps, Tamb, Twall, inc_radiation=None):
         # LHS, matrix 'AA':
         for j in range(n):
             if i == j:
-                AA[i,j] = A[i]*(1. - VF[i,j]*(1. - eps[i]))
+                AA[i,j] = 1. - VF[i,j]*(1. - eps[i])
             else:
-                AA[i,j] = -A[i]*VF[i,j]*(1.-eps[i])
-                if (inc_radiation != None):
-                    if inc_radiation[i] != 0:
-                        AA[i,j] = -A[i]*VF[i,j]
+                AA[i,j] = -VF[i,j]*(1.-eps[i])
 
         # RHS 'bb': for 1..n-1, setting up the temperture matrix, T[i]
-        bb[i] = A[i]*eps[i]*sigma*T[i]**4.
+        bb[i] = eps[i]*sigma*T[i]**4.
         if (inc_radiation != None):
-            if inc_radiation[i] != 0:
-                bb[i] = inc_radiation[i]
+            if ~N.isnan(inc_radiation[i]):
+                bb[i] = eps[i]*inc_radiation[i]
 
     # Matrix inversion:
     J = N.linalg.solve(AA, bb)
@@ -68,16 +64,19 @@ def radiosity_RTVF(VF, areas, eps, Tamb, Twall, inc_radiation=None):
 
     for i in range(n):
         if eps[i]!=1.:
-            q[i]=(eps[i])/(1.-eps[i])*(E[i]-J[i]) #(W/m2)
-            Q[i]=(eps[i]*A[i])/(1.-eps[i])*(E[i]-J[i]) #(W) 
-        else:
-            q[i] = (E[i]-N.sum(VF[i,:]*J)) #(W/m2)
-            Q[i] = A[i]*(E[i]-N.sum(VF[i,:]*J)) #(W)
-        if (inc_radiation != None):
-            if inc_radiation[i] != 0:
-                q[i] = inc_radiation[i]/A[i]
-                Q[i] = inc_radiation[i]
-                T[i] = ((Q[i]*(1.-eps[i])/(eps[i]*A[i])+J[i])/sigma)**0.25  
+            q[i] = eps[i]/(1.-eps[i])*(E[i]-J[i]) #(W/m2)
 
+            if (inc_radiation != None):
+                if ~N.isnan(inc_radiation[i]):
+                    q[i] = eps[i]/(1.-eps[i])*(inc_radiation[i]-J[i])
+                    T[i] = ((A[i]*q[i]*(1.-eps[i])/(eps[i]*A[i])+J[i])/sigma)**(1./4.)
+
+        else:
+            q[i] = J[i]-N.sum(VF[i,:]*J) #(W/m2)
+            if (inc_radiation != None):
+                if ~N.isnan(inc_radiation[i]):
+                    q[i] = (inc_radiation[i]-N.sum(VF[i,:]*J))
+                    T[i] = ((A[i]*q[i]*(1.-eps[i])/(eps[i]*A[i])+J[i])/sigma)**(1./4.)  
+    Q = A*q #(W)
     return AA,bb,J,E,T,q,Q
 # vim: ts=4 et:

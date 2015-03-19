@@ -36,7 +36,7 @@ class FlatGeometryManager(GeometryManager):
         
         # Vet out parallel rays:
         dt = N.dot(d.T, frame[:3,2])
-        unparallel = abs(dt) > 1e-14
+        unparallel = abs(dt) > 0.
         
         # `params` holds the parametric location of intersections along the ray 
         params = N.empty(n)
@@ -47,12 +47,11 @@ class FlatGeometryManager(GeometryManager):
         
         # Takes into account a negative depth
         # Note that only the 3rd row of params is relevant here!
-        negative = params < 1e-14
+        negative = params < 0.
         params[negative] = N.Inf
         
         self._params = params
-        self._backside = dt > 1e-14
-        
+        self._backside = dt > 0.
         return params
         
     def select_rays(self, idxs):
@@ -203,6 +202,8 @@ class RectPlateGM(FiniteFlatGM):
         x, y, z - each a 2D array holding in its (i,j) cell the x, y, and z
             coordinate (respectively) of point (i,j) in the mesh.
         """
+        if resolution == None:
+            resolution = 40
         points = N.ceil(resolution*self._half_dims.reshape(-1)*2)
         points[points < 2] = 2 # At least the edges of the range.
         xs = N.linspace(-self._half_dims[0,0], self._half_dims[0,0], points[0])
@@ -223,10 +224,10 @@ class RoundPlateGM(FiniteFlatGM):
         Re - the plate's external radius
         Ri - the plate's internal radius
         """
-        if Re <= 0:
+        if Re <= 0.:
             raise ValueError("Radius must be positive")
         if Ri != None:
-            if Ri <=0:
+            if Ri <=0.:
                 raise ValueError("Radius must be positive")
         
         self._Ri = Ri       
@@ -239,9 +240,9 @@ class RoundPlateGM(FiniteFlatGM):
         impact points outside a centered circle.
         """
         ray_prms = FiniteFlatGM.find_intersections(self, frame, ray_bundle)
-        ray_prms[N.sum(self._local[:2]**2, axis=0) > self._Re**2] = N.inf
+        ray_prms[N.sum(self._local[:2]**2., axis=0) > self._Re**2.] = N.inf
         if self._Ri != None:
-            ray_prms[N.sum(self._local[:2]**2, axis=0) < self._Ri**2] = N.inf
+            ray_prms[N.sum(self._local[:2]**2., axis=0) < self._Ri**2.] = N.inf
         del self._local
         return ray_prms
     
@@ -266,7 +267,6 @@ class RoundPlateGM(FiniteFlatGM):
         angs = N.r_[0.:2.*N.pi+2.*N.pi/resolution:2.*N.pi/resolution]
         if self._Ri != None:
             rs = self._Ri+N.arange(resolution+1)*(self._Re-self._Ri)/(resolution)
-            print len(rs)
         else:
             r_end = self._Re+self._Re/resolution
             rs = N.arange(0.,r_end,self._Re/resolution)

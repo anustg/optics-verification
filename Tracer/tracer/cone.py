@@ -5,7 +5,6 @@ from quadric import QuadricGM
 
 
 class InfiniteCone(QuadricGM):
-    # TODO reimplement with support for z0, location of apex
     """
     Implements the geometry of an infinite circular conical surface. That
     means the sloping side-walls of the cone, doesn't include the base.
@@ -42,17 +41,17 @@ class InfiniteCone(QuadricGM):
         # Partial derivation of the 'hit' equations <=> normal directions       
         partial_x = 2.*hit[0]
         partial_y = 2.*hit[1]
-        partial_z = -2.*(hit[2] - self.a)*self.c**2.        
+        partial_z = -2.*(hit[2] - self.a)*self.c**2.
         # Build local unit normal vector
         local_normal = N.vstack((partial_x, partial_y, partial_z))
-        local_unit = local_normal/N.sqrt(N.sum(local_normal**2, axis=0))
+        local_unit = local_normal/N.sqrt(N.sum(local_normal**2., axis=0))
         # Identify the orientation of the normal considering the incident orientation of the 
         # ray. Treat the specific case of the apex setting the normal to be
         # -1*dir_loc at that point.
-        down = N.sum(dir_loc * local_unit, axis=0) > 1e-14
+        down = N.sum(dir_loc * local_unit, axis=0) > 0.
         apex = (hit[2] == self.a)
-        local_unit[:,down] *= -1  
-        local_unit[:,apex] = N.vstack((0,0,-1))
+        local_unit[:,down] *= -1.
+        local_unit[:,apex] = N.vstack((0.,0.,-1.))
         normals = N.dot(self._working_frame[:3,:3], local_unit)
         
         return normals  
@@ -66,9 +65,9 @@ class InfiniteCone(QuadricGM):
         d = N.dot(self._working_frame[:3,:3].T, ray_bundle.get_directions())
         v = N.dot(N.linalg.inv(self._working_frame), N.vstack((ray_bundle.get_vertices(), N.ones(d.shape[1]))))[:3]
 
-        A = d[0]**2 + d[1]**2 - (self.c*d[2])**2
-        B = 2*(v[0]*d[0] + v[1]*d[1] - self.c**2*(v[2] - self.a)*d[2])
-        C = v[0]**2 + v[1]**2 - (self.c*(v[2] - self.a))**2
+        A = d[0]**2. + d[1]**2. - (self.c*d[2])**2.
+        B = 2.*(v[0]*d[0] + v[1]*d[1] - self.c**2.*(v[2] - self.a)*d[2])
+        C = v[0]**2. + v[1]**2. - (self.c*(v[2] - self.a))**2.
 
         return A, B, C
 
@@ -80,7 +79,7 @@ class FiniteCone(InfiniteCone):
 
     """
     def __init__(self, r, h):
-        if h <= 0 or r <= 0:
+        if h <= 0. or r <= 0.:
             raise AttributeError      
         self.h = float(h)
         self.r = float(r)
@@ -110,7 +109,7 @@ class FiniteCone(InfiniteCone):
         
         # Check the valid hitting points:
         inside = (height >= 0) & (height <= self.h)
-        positive = prm > 1e-10 # to account for flating point precision issues.
+        positive = prm > 1e-14 # to account for flating point precision issues.
 
         # Choses between the two intersections offered by the surface.
         hitting = inside & positive
@@ -205,7 +204,7 @@ class ConicalFrustum(InfiniteCone):
         hitting = inside & positive
 
         # Choses between the two intersections offered by the surface.
-        select[N.logical_and(*hitting)] = 1
+        select[N.logical_and(*hitting)] = True
         one_hitting = N.logical_xor(*hitting)
         select[one_hitting] = N.nonzero(hitting.T[one_hitting,:])[1]
 

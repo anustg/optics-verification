@@ -86,7 +86,7 @@ class FiniteCylinder(InfiniteCylinder):
         height = N.sum(N.linalg.inv(self._working_frame)[None,2,:,None] * \
             N.concatenate((coords, N.ones((2,1,coords.shape[-1]))), axis=1), axis=1)
         inside = (abs(height) <= self._half_h)
-        positive = prm > 1e-10
+        positive = prm > 1e-15
         
         hitting = inside & positive
         select[N.logical_and(*hitting)] = 1

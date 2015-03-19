@@ -64,11 +64,12 @@ class Renderer():
 		    self.r.addChild(ls)
 
 
-	def show_geom(self):
+	def show_geom(self,resolution=None):
 		"""
 		Method to draw the geometry of the scene to a Coin3D scenegraph.
 		"""
-		self.r.addChild(self.sim.Scene.get_scene_graph())
+		print self.sim._asm._assemblies
+		self.r.addChild(self.sim._asm.get_scene_graph(resolution))
 		win = SoGui.init()
 		viewer = SoGuiExaminerViewer(win)
 		viewer.setSceneGraph(self.r)
@@ -79,11 +80,11 @@ class Renderer():
 
 		SoGui.mainLoop()
 
-	def show_rays(self, escaping_len=0.5, max_rays=None):
+	def show_rays(self, escaping_len=0.5, max_rays=None, resolution=None):
 		"""
 		Method to draw the rays to a Coin3D scenegraph. Needs to be called after a raytrace has been peroformed.
 		"""
-		tree = self.sim.engine.tree
+		tree = self.sim.tree
 		no = coin.SoSeparator()
 		
 		# loop through the reflection sequences?
@@ -163,7 +164,7 @@ class Renderer():
 
 		no.addChild(no1)
 		self.r.addChild(no)
-		self.r.addChild(self.sim.engine._asm.get_scene_graph())
+		self.r.addChild(self.sim._asm.get_scene_graph(resolution))
 
 		win = SoGui.init()
 		viewer = SoGuiExaminerViewer(win)

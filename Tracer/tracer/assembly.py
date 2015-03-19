@@ -131,7 +131,7 @@ class Assembly(HasFrame):
         for obj in self._assemblies + self._objects:
             obj.transform_children(N.dot(assembly_transform, const_t))
 
-    def get_scene_graph(self,resolution=None):
+    def get_scene_graph(self,resolution):
         n = self.get_scene_graph_transform()
 
         for obj in self._assemblies:

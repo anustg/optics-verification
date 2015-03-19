@@ -42,7 +42,7 @@ def rotation_to_z(vecs):
     perp = N.hstack((vecs[:,1][:,None],  -vecs[:,0][:,None],
         N.zeros((vecs.shape[0], 1)) ))
     perp[N.all(perp == 0., axis=1)] = N.r_[1.,  0.,  0.]
-    perp /= N.sqrt(N.sum(perp**2, axis=1))[:,None]
+    perp /= N.sqrt(N.sum(perp**2., axis=1))[:,None]
     perp_rot = N.concatenate((perp[...,None], N.cross(vecs, perp)[...,None],
         vecs[...,None]), axis=2)
     return N.squeeze(perp_rot)
