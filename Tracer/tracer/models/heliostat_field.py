@@ -37,6 +37,7 @@ class HeliostatField(Assembly):
         self._heliostats = []
         for pos in positions:
             hstat = rect_one_sided_mirror(width, height, absorpt)
+            #hstat = rect_para_one_sided_mirror(width, height, absorpt)
             trans = face_down.copy()
             trans[:3,3] = pos
             hstat.set_transform(trans)
