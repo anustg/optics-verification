@@ -54,7 +54,7 @@ class TowerScene():
         self.field = HeliostatField(self.pos, 6.09e-1, 6.09e-1, 0, 6.1)
 
         self.rec, recobj = one_sided_receiver(1.1, 1.1)
-        rec_trans = rotx(N.pi/2)
+        rec_trans = rotx(N.pi/-2)
         rec_trans[2,3] = 6.1 # height of the tower
         recobj.set_transform(rec_trans)
 
