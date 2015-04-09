@@ -44,6 +44,16 @@ def rect_one_sided_mirror(width, height, absorptivity=0.):
     obj.surfaces_for_next_iteration = types.MethodType(
         surfaces_for_next_iteration, obj, obj.__class__)
     return obj
+    
+# added
+def rect_para_one_sided_mirror(width, height, absorptivity=0.):
+    surf = Surface(RectangularParabolicDishGM(width, height, focal_length),
+                   opt.RealReflective_OneSide(absorptivity))
+    obj = AssembledObject(surfs = [surf])
+    obj.surfaces_for_next_iteration = types.MethodType(
+        surfaces_for_next_iteration, obj, obj.__class__)
+    return obj
+# added end
 
 def one_sided_receiver(width, height, absorptivity=1.):
     """
