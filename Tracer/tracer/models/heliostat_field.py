@@ -13,7 +13,7 @@ References:
 import numpy as N
 
 from ..assembly import Assembly
-from .one_sided_mirror import rect_one_sided_mirror
+from .one_sided_mirror import rect_one_sided_mirror, rect_para_one_sided_mirror
 from ..spatial_geometry import rotx, roty, rotz
 
 class HeliostatField(Assembly):
@@ -33,15 +33,22 @@ class HeliostatField(Assembly):
         self._pos = positions  # Save collecting positions from the hstats.
         self._th = aim_height
         face_down = rotx(N.pi)
+        tower_ht = N.array([0,0,self._th]) #
         
         self._heliostats = []
         for pos in positions:
-            hstat = rect_one_sided_mirror(width, height, absorpt)
-            #hstat = rect_para_one_sided_mirror(width, height, absorpt)
+            hstat_pos = N.array(pos)
+            focal_length = N.linalg.norm(tower_ht - hstat_pos)
+            print(focal_length)
+            print('initialising parabolic mirror here')
+            #hstat = rect_one_sided_mirror(width, height, absorpt)
+            hstat = rect_para_one_sided_mirror(width, height, focal_length, absorpt)
+            print('finished initialising heliostat')
             trans = face_down.copy()
             trans[:3,3] = pos
             hstat.set_transform(trans)
             self._heliostats.append(hstat)
+            print('appended heliostat')
             
         Assembly.__init__(self, objects=self._heliostats)
     

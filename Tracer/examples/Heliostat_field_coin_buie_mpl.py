@@ -20,6 +20,9 @@ from tracer.tracer_engine import TracerEngine
 from tracer.models.one_sided_mirror import one_sided_receiver
 from tracer.models.heliostat_field import HeliostatField, radial_stagger, solar_vector
 
+# For the flux map:
+import matplotlib.pyplot as plt
+
 class TowerScene():
     # Location of the sun:
     sun_az = 80. #80, zero is due south
@@ -47,7 +50,7 @@ class TowerScene():
         self.field = HeliostatField(self.pos, 6.09e-1, 6.09e-1, 0, 6.1)
 
         self.rec, recobj = one_sided_receiver(1.1, 1.1) # was (1, 1)
-        rec_trans = rotx(N.pi/2)
+        rec_trans = rotx(N.pi/-2) # CHANGED SIGN
         rec_trans[2,3] = 6.1 # height of the tower
         recobj.set_transform(rec_trans)
 
@@ -67,29 +70,32 @@ class TowerScene():
         hstat_rays = 20
         num_rays = hstat_rays*len(self.field.get_heliostats())
 
-        #
-        #rot_sun = rotation_to_z(-sun_vec)
-        #direct = N.dot(rot_sun, pillbox_sunshape_directions(num_rays, 0.00465))
-        
-        #xy = N.random.uniform(low=-0.25, high=0.25, size=(2, num_rays))
-        #base_pos = N.tile(self.pos, (hstat_rays, 1)).T
-        #base_pos += N.dot(rot_sun[:,:2], xy)
-        
-        #base_pos -= direct
-        #
-        
-        #rays = RayBundle(base_pos, direct, energy=N.ones(num_rays))
-        #rays = buie_sunshape(num_rays, (self.pos+sun_vec).T, N.tile(-sun_vec, (self.pos.shape[0], 1)).T, 4.65, 0.0225, 1000)
         rays = self.gen_rays(num_rays)
         
         # Perform the trace:
         e = TracerEngine(self.plant)
         e.ray_tracer(rays, 100, 0.05, tree=True)
-        e.minener = 1e-5
+        e.minener = 1e-6 # default 1e-5
 
 	# Render:
         trace_scene = Renderer(e)
         trace_scene.show_rays()
+
+        # Initialise a histogram of hits:
+        energy, pts = self.rec.get_optics_manager().get_all_hits()
+        x, y = self.rec.global_to_local(pts)[:2]
+        rngx = 0.55 #0.5
+        rngy = 0.55 #0.5
+        
+        bins = 55 #50
+        H, xbins, ybins = N.histogram2d(x, y, bins, \
+            range=([-rngx,rngx], [-rngy,rngy]), weights=energy)
+        print(H, xbins, ybins)
+
+        extent = [ybins[0], ybins[-1], xbins[-1], xbins[0]]
+        plt.imshow(H, extent=extent, interpolation='nearest')
+        plt.colorbar()
+        plt.show()
 
 scene = TowerScene()
 scene.aim_field()

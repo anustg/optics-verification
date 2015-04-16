@@ -178,6 +178,7 @@ class RectPlateGM(FiniteFlatGM):
             raise ValueError("Height must be positive")
         
         self._half_dims = N.c_[[width, height]]/2.
+        print(">", self._half_dims)
         FiniteFlatGM.__init__(self)
         
     def find_intersections(self, frame, ray_bundle):
@@ -211,6 +212,7 @@ class RectPlateGM(FiniteFlatGM):
         
         x, y = N.broadcast_arrays(xs[:,None], ys)
         z = N.zeros_like(x)
+        print(">>> rect plate", x, y, z)
         return x, y, z
 
 class RoundPlateGM(FiniteFlatGM):
@@ -274,6 +276,7 @@ class RoundPlateGM(FiniteFlatGM):
         x = N.outer(rs, N.cos(angs))
         y = N.outer(rs, N.sin(angs))
         z = N.zeros_like(x)
+        
         return x, y, z
 
 

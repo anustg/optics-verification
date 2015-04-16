@@ -19,12 +19,7 @@ from tracer.tracer_engine import TracerEngine
 from tracer.models.one_sided_mirror import one_sided_receiver
 from tracer.models.heliostat_field import HeliostatField, radial_stagger, solar_vector
 
-# For the embedded flux map:
-from matplotlib.figure import Figure 
-from embedded_figure import MPLFigureEditor
-import wx
-
-# testing
+# For the flux map:
 import matplotlib.pyplot as plt
 
 class TowerScene():
@@ -32,8 +27,6 @@ class TowerScene():
     sun_az = 80. # degrees from positive X-axis
     sun_elev = 45. # degrees from XY-plane
 
-    # Flux map figure:
-    #fmap = t_api.Instance(Figure)
     
     def __init__(self):
         self.gen_plant() 
@@ -54,7 +47,7 @@ class TowerScene():
         self.field = HeliostatField(self.pos, 6.09e-1, 6.09e-1, 0, 6.1)
 
         self.rec, recobj = one_sided_receiver(1.1, 1.1)
-        rec_trans = rotx(N.pi/-2)
+        rec_trans = rotx(N.pi/-2) # originally N.pi/2, changed to minus
         rec_trans[2,3] = 6.1 # height of the tower
         recobj.set_transform(rec_trans)
 
@@ -82,18 +75,15 @@ class TowerScene():
         rays = RayBundle(base_pos, direct, energy=N.ones(num_rays))
         
         # Perform the trace:
-        self.rec.get_optics_manager().reset() #
         e = TracerEngine(self.plant)
         e.ray_tracer(rays, 100, 0.05, tree=True)
-        e.minener = 1e-20 # default 1e-5
+        e.minener = 1e-6 # default 1e-5
 
 	# Render:
         trace_scene = Renderer(e)
         trace_scene.show_rays()
 
-    def gen_plot(self):
         # Initialise a histogram of hits:
-        #energy, pts = self.rec.get_optics_manager().get_all_hits()
         energy, pts = self.rec.get_optics_manager().get_all_hits()
         x, y = self.rec.global_to_local(pts)[:2]
         rngx = 0.55 #0.5
@@ -103,21 +93,13 @@ class TowerScene():
         H, xbins, ybins = N.histogram2d(x, y, bins, \
             range=([-rngx,rngx], [-rngy,rngy]), weights=energy)
         print(H, xbins, ybins)
-        
-        #self.fmap.axes[0].images=[] #self.
-        #self.fmap.axes[0].imshow(H, aspect='auto') #self.
-        #wx.CallAfter(fmap.canvas.draw)
 
         extent = [ybins[0], ybins[-1], xbins[-1], xbins[0]]
         plt.imshow(H, extent=extent, interpolation='nearest')
         plt.colorbar()
         plt.show()
 
-        #figure = Figure()
-        #figure.add_axes([0.05, 0.04, 0.9, 0.92])
-        #figure.show()
-
 scene = TowerScene()
 scene.aim_field()
 scene.trace()
-scene.gen_plot()
+

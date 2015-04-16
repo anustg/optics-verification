@@ -40,11 +40,14 @@ class TowerScene():
         return rays
     
     def gen_plant(self):
-        xy = radial_stagger(-N.pi/4, N.pi/4 + 0.0001, self.ang_res, 5., 20., self.radial_res)
-        self.pos = N.hstack((xy, N.zeros((xy.shape[0], 1))))
+        #xy = radial_stagger(-N.pi/4, N.pi/4 + 0.0001, self.ang_res, 5., 20., self.radial_res)
+        #self.pos = N.hstack((xy, N.zeros((xy.shape[0], 1))))
+        self.pos = N.array([[10, 0, 0]])
+        print(self.pos)
         self.field = HeliostatField(self.pos, 0.5, 0.5, 0, 10)
 
         self.rec, recobj = one_sided_receiver(1., 1.)
+        print('generated receiver')
         rec_trans = roty(N.pi/2)
         rec_trans[2,3] = 10
         recobj.set_transform(rec_trans)
@@ -85,4 +88,3 @@ class TowerScene():
 scene = TowerScene()
 scene.aim_field()
 scene.trace()
-

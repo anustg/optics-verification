@@ -144,7 +144,7 @@ class RealReflective_OneSide(RealReflective):
     """
     def __call__(self, geometry, rays, selector):
         outg = RealReflective.__call__(self, geometry, rays, selector)
-        energy = outg.set_energy()
+        energy = outg.get_energy()
         proj = N.sum(rays.get_directions()[:,selector]*geometry.up()[:,None], axis = 0)
         energy[proj > 0] = 0 # projection up - set energy to zero
         outg.set_energy(energy) #substitute previous step into ray energy array
