@@ -50,59 +50,7 @@ class Paraboloid(QuadricGM):
         normals = N.dot(self._working_frame[:3,:3], local_unit)
         
         return normals
-# added
 
-    def find_intersections(self, frame, ray_bundle):
-        """
-        Register the working frame and ray bundle, calculate intersections
-        and save the parametric locations of intersection on the surface.
-        Algorithm taken from [1].
-        
-        In this class, global- and local-coordinates of intersection points
-        are calculated and kept. _global is handled in select_rays(), but
-        _local must be taken care off by subclasses.
-        
-        Arguments:
-        frame - the current frame, represented as a homogenous transformation
-            matrix stored in a 4x4 array.
-        ray_bundle - a RayBundle object with the incoming rays' data.
-        
-        Returns:
-        A 1D array with the parametric position of intersection along each of
-            the rays. Rays that missed the surface return +infinity.
-        """
-        ray_prms = QuadricGM.find_intersections(self, frame, ray_bundle)
-        v = self._working_bundle.get_vertices() 
-        d = self._working_bundle.get_directions()
-        p = self._params
-        del self._params
-        
-        # Global coordinates on the surface:
-        oldsettings = N.seterr(invalid='ignore')
-        self._global = v + p[None,:]*d
-        N.seterr(**oldsettings)
-        # above we ignore invalid values. Those rays can't be selected anyway.
-        
-        # Local should be deleted by children in their find_intersections.
-        self._local = N.dot(N.linalg.inv(self._working_frame),
-            N.vstack((self._global, N.ones(self._global.shape[1]))))
-        
-        return ray_prms
-
-    def select_rays(self, idxs):
-        """
-        Inform the geometry manager that only the given rays are to be used,
-        so that internal data size is kept small.
-        
-        Arguments: 
-        idxs - an index array stating which rays of the working bundle
-            are active.
-        """
-        self._idxs = idxs
-        self._backside = N.nonzero(self._backside[idxs])[0]
-        self._global = self._global[:,idxs].copy()
-
-# added end
     
     def get_ABC(self, ray_bundle):
         """
@@ -264,7 +212,8 @@ class RectangularParabolicDishGM(Paraboloid):
     def __init__(self, width, height, focal_length):
         par_param = 2*math.sqrt(focal_length)
         Paraboloid.__init__(self, par_param, par_param)
-        self._R = float(math.sqrt((width/2)**2 + (height/2)**2))
+        self._half_dims = N.c_[[width, height]]/2
+        #self._R = float(math.sqrt((width/2)**2 + (height/2)**2))
         self._w, self._h = width/2., height/2.
 
     def _select_coords(self, coords, prm):
@@ -302,27 +251,9 @@ class RectangularParabolicDishGM(Paraboloid):
 
         return select
 
-# added
-
-    def find_intersections(self, frame, ray_bundle):
-        """
-        Extends the parent flat geometry manager by discarding in advance
-        impact points outside a centered rectangle.
-        """
-        half_dims = N.c_[[self._w, self._h]]
-        ray_prms = Paraboloid.find_intersections(self, frame, ray_bundle)
-        ray_prms[N.any(abs(self._local[:2]) > half_dims, axis=0)] = N.inf
-        del self._local
-        return ray_prms
-    
-# added end
-
     def mesh(self, resolution=None):
-        # Copied straight from above: def paraboloid().
         """
-        Represent the surface as a mesh in local coordinates. Uses polar
-        bins, i.e. the points are equally distributed by angle and radius,
-        not by x,y.
+        Represent the surface as a mesh in local coordinates.
         
         Arguments:
         resolution - in points per unit length (so the number of points 
@@ -332,24 +263,16 @@ class RectangularParabolicDishGM(Paraboloid):
         x, y, z - each a 2D array holding in its (i,j) cell the x, y, and z
             coordinate (respectively) of point (i,j) in the mesh.
         """
-        if resolution is None:
-            resolution = 2*N.pi*self._R / 40
-        print("radial resolution", resolution)
-
-        # Generate a circular-edge mesh using polar coordinates.
-        r_end = self._R + 1./100./resolution
-        rs = N.r_[0:r_end:resolution] # previously 1./resolution; error
-        # Make the circumferential points at a FIXED resolution (20).
-        ang_end = 2*N.pi + 0.01 # 2pi + epsilon
-        angs = N.r_[0:ang_end + 0.01:ang_end/20.]
-        print(rs, angs)
-
-        x = N.outer(rs, N.cos(angs))
-        y = N.outer(rs, N.sin(angs))
-        z = self.a*x**2 + self.b*y**2
-
-        print(">>>", x, y, z)
+        if resolution == None:
+            resolution = 40
+        points = N.ceil(resolution*self._half_dims.reshape(-1)*2)
+        points[points < 2] = 2 # At least the edges of the range.
+        xs = N.linspace(-self._half_dims[0,0], self._half_dims[0,0], points[0])
+        ys = N.linspace(-self._half_dims[1,0], self._half_dims[1,0], points[1])
         
+        x, y = N.broadcast_arrays(xs[:,None], ys)
+        z = z = self.a*x**2 + self.b*y**2
+        print(">>> heliostat", x, y, z)
         return x, y, z
     
 # added end
