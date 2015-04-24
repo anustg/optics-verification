@@ -271,7 +271,7 @@ class RectangularParabolicDishGM(Paraboloid):
         ys = N.linspace(-self._half_dims[1,0], self._half_dims[1,0], points[1])
         
         x, y = N.broadcast_arrays(xs[:,None], ys)
-        z = z = self.a*x**2 + self.b*y**2
+        z = self.a*x**2 + self.b*y**2
         print(">>> heliostat", x, y, z)
         return x, y, z
     
