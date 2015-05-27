@@ -63,6 +63,62 @@ def pillbox_sunshape_directions(num_rays, ang_range):
 
     return a
 
+def bivariate_directions(num_rays, ang_range_hor, ang_range_vert):
+    """
+    Calculates directions for a ray bundles with ``num_rays`` rays, distributed
+    as uniform bi-variate distribution shining toward the +Z axis and deviating from it by
+    at most ang_range_hor on the zx plane and ang_range_vert on the yz plane such that if all rays have the same energy, the flux
+    distribution comes out right.
+    
+    Arguments:
+    num_rays - number of rays to generate directions for.
+    ang_range_hor - in radians, the maximum deviation from +Z on the zx plane.
+    ang_range_vert - in radians, the maximum deviation from +Z on the yz plane.
+    
+    Returns:
+    A (3, num_rays) array whose each column is a unit direction vector for one
+        ray, distributed to match a uniform bi-variate distribution.
+    """
+    # Diffuse divergence from +Z:
+    # development based on eq. 2.12  from [1]
+    '''
+    xi1 = N.random.uniform(low=-1., high=1., size=num_rays)
+    xi2 = N.random.uniform(low=-1., high=1., size=num_rays)
+    
+    theta_hor = N.arcsin(N.sin(ang_range_hor)*N.sqrt(xi1))
+    theta_vert = N.arcsin(N.sin(ang_range_vert)*N.sqrt(xi2))
+
+    xa = N.sin(theta_hor)
+    ya = N.sin(theta_vert)
+    za = N.sqrt(1.-N.sin(theta_hor)**2.-N.sin(theta_vert)**2.)
+
+    a = N.vstack((xa, ya, za))
+    '''
+    return a
+
+def edge_rays_directions(num_rays, ang_range):
+    """
+    Calculates directions for a ray bundles with ``num_rays`` rays, distributed
+    as a pillbox sunshape shining toward the +Z axis, and deviating from it by
+    at most ang_range, such that if all rays have the same energy, the flux
+    distribution comes out right.
+    
+    Arguments:
+    num_rays - number of rays to generate directions for.
+    ang_range - in radians, the maximum deviation from +Z.
+    
+    Returns:
+    A (3, num_rays) array whose each column is a unit direction vector for one
+        ray, distributed to match a pillbox sunshape.
+    """
+    # Diffuse divergence from +Z:
+    # development based on eq. 2.12  from [1]
+    xi1 = random.uniform(high=2.*N.pi, size=num_rays)
+    sin_th = N.ones(num_rays)*N.sin(ang_range)
+    a = N.vstack((N.cos(xi1)*sin_th, N.sin(xi1)*sin_th , N.cos(N.ones(num_rays)*ang_range)))
+
+    return a
+
 def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=None, radius_in=0.):
     """
     Generates a ray bundle emanating from a disk, with each surface element of 
@@ -89,6 +145,59 @@ def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=No
     radius = float(radius)
     radius_in = float(radius_in)
     a = pillbox_sunshape_directions(num_rays, ang_range)
+        
+    # Rotate to a frame in which <direction> is Z:
+    perp_rot = rotation_to_z(direction)
+    directions = N.sum(perp_rot[...,None] * a[None,...], axis=1)
+    # Locations:
+    # See [1]
+    xi1 = random.uniform(size=num_rays)
+    thetas = random.uniform(high=2.*N.pi, size=num_rays)
+    rs = N.sqrt(radius_in**2.+xi1*(radius**2.-radius_in**2.))
+    xs = rs * N.cos(thetas)
+    ys = rs * N.sin(thetas)
+
+    # Rotate locations to the plane defined by <direction>:
+    vertices_local = N.vstack((xs, ys, N.zeros(num_rays)))
+    vertices_global = N.dot(perp_rot, vertices_local)
+
+    rayb = RayBundle(vertices=vertices_global + center, directions=directions)
+    if flux != None:
+        rayb.set_energy(N.pi*(radius**2.-radius_in**2.)/num_rays*flux*N.ones(num_rays))
+    return rayb
+
+def solar_rect_bundle(num_rays, center, direction, x, y, ang_range, flux=None):
+
+    a = pillbox_sunshape_directions(num_rays, ang_range)
+
+    # Rotate to a frame in which <direction> is Z:
+    perp_rot = rotation_to_z(direction)
+    directions = N.sum(perp_rot[...,None] * a[None,...], axis=1)
+
+    xs = random.uniform(low=-x/2., high=x/2., size=num_rays)
+    ys = random.uniform(low=-y/2., high=y/2., size=num_rays)
+
+    if direction == [0,0,-1]:
+        xs, ys = ys, xs
+
+    # Rotate locations to the plane defined by <direction>:
+    vertices_local = N.vstack((ys, xs, N.zeros(num_rays)))
+    vertices_global = N.dot(perp_rot, vertices_local)
+
+    rayb = RayBundle(vertices=vertices_global + center, directions=directions)
+    if flux != None:
+        rayb.set_energy(x*y/num_rays*flux*N.ones(num_rays))
+    return rayb
+
+#def bivariate_rect_bundle(num_rays, center, direction, x, y, ang_range_vert, ang_range_hor, flux=None):
+
+
+
+def edge_rays_bundle(num_rays,  center,  direction,  radius, ang_range, flux=None, radius_in=0.):
+
+    radius = float(radius)
+    radius_in = float(radius_in)
+    a = edge_rays_directions(num_rays, ang_range)
         
     # Rotate to a frame in which <direction> is Z:
     perp_rot = rotation_to_z(direction)
@@ -314,17 +423,14 @@ def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True):
 
     dir_flat = pillbox_sunshape_directions(num_rays, N.pi/2.)
 
-    dir_zrot = N.zeros((N.shape(dir_flat)))
-    yrot = roty(N.pi/2.)[:3,:3]
-    dir_yrot = N.dot(yrot,dir_flat)
-
+    yrot = roty(-N.pi/2.)[:3,:3]
+    local_unit = N.zeros((N.shape(dir_flat)))
     for t in range(N.shape(dir_flat)[1]):
         zrot = rotz(phi_s[t])[:3,:3]
-        dir_zrot[:,t] = N.dot(zrot,dir_yrot[:,t])
+        rot = N.dot(zrot, yrot)
+        local_unit[:,t] = N.dot(rot, dir_flat[:,t])
 
-    local_unit = dir_zrot/N.sqrt(N.sum(dir_zrot**2., axis=0))
-
-    if rays_in == True:
+    if rays_in == False:
         local_unit = -local_unit
 
     vertices_local = N.vstack((xs, ys, zs))

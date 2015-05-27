@@ -106,15 +106,72 @@ class AbsorptionAccountant(object):
         return N.hstack([a for a in self._absorbed if len(a)]), \
             N.hstack([h for h in self._hits if h.shape[1]])
 
+class DirectionAccountant(object):
+    """
+    This optics manager remembers all of the locations where rays hit it
+    in all iterations, and the energy absorbed from each ray.
+    """
+    def __init__(self, real_optics, absorptivity, sigma_xy=None):
+        """
+        Arguments:
+        real_optics - the optics manager class to actually use. Expected to
+            have the _abs protected attribute, and accept absorptivity as its
+            only constructor argument (as in Reflective and
+            LambertianReflector below).
+        absorptivity - to be passed to a new real_optics object.
+        """
+        if sigma_xy==None:
+            self._opt = real_optics(absorptivity)
+        else:
+            self._opt = real_optics(absorptivity, sigma_xy)
+        self.reset()
+    
+    def reset(self):
+        """Clear the memory of hits (best done before a new trace)."""
+        self._absorbed = []
+        self._hits = []
+        self._directions = []
+    
+    def __call__(self, geometry, rays, selector):
+        self._absorbed.append(rays.get_energy()[selector]*self._opt._abs)
+        self._directions.append(rays.get_directions()[:,selector])
+        self._hits.append(geometry.get_intersection_points_global())
+        return self._opt(geometry, rays, selector)
+    
+    def get_all_hits(self):
+        """
+        Aggregate all hits from all stages of tracing into joined arrays.
+        
+        Returns:
+        absorbed - the energy absorbed by each hit-point
+        hits - the corresponding global coordinates for each hit-point.
+        """
+        if not len(self._absorbed):
+            return N.array([]), N.array([]).reshape(3,0), N.array([]).reshape(3,0)
+        
+        return N.hstack([a for a in self._absorbed if len(a)]), \
+            N.hstack([h for h in self._hits if h.shape[1]]), \
+            N.hstack([d for d in self._directions if d.shape[1]])
+
 class ReflectiveReceiver(AbsorptionAccountant):
     """A wrapper around AbsorptionAccountant with a Reflective optics"""
     def __init__(self, absorptivity):
         AbsorptionAccountant.__init__(self, Reflective, absorptivity)
 
+class ReflectiveDetector(DirectionAccountant):
+    """A wrapper around AbsorptionAccountant with a Reflective optics"""
+    def __init__(self, absorptivity):
+        DirectionAccountant.__init__(self, Reflective, absorptivity)
+
 class RealReflectiveReceiver(AbsorptionAccountant):
     """A wrapper around AbsorptionAccountant with a RealReflective optics"""
     def __init__(self, absorptivity=0, sigma_xy=0):
         AbsorptionAccountant.__init__(self, RealReflective, absorptivity, sigma_xy)
+
+class RealReflectiveDetector(DirectionAccountant):
+    """A wrapper around AbsorptionAccountant with a RealReflective optics"""
+    def __init__(self, absorptivity=0, sigma_xy=0):
+        DirectionAccountant.__init__(self, RealReflective, absorptivity, sigma_xy)
         
 class AbsorberReflector(Reflective):
     """
@@ -222,7 +279,7 @@ class LambertianReflector(object):
         
         outg = rays.inherit(selector,
             vertices=geometry.get_intersection_points_global(),
-            energy=rays.get_energy()[selector]*(1 - self._abs),
+            energy=rays.get_energy()[selector]*(1. - self._abs),
             direction=directs, 
             parents=selector)
         return outg
@@ -231,6 +288,11 @@ class LambertianReceiver(AbsorptionAccountant):
     """A wrapper around AbsorptionAccountant with LambertianReflector optics"""
     def __init__(self, absorptivity):
         AbsorptionAccountant.__init__(self, LambertianReflector, absorptivity)
+
+class LambertianDetector(DirectionAccountant):
+    """A wrapper around DirectionAccountant with LambertianReflector optics"""
+    def __init__(self, absorptivity):
+        DirectionAccountant.__init__(self, LambertianReflector, absorptivity)
 
 
 # vim: et:ts=4

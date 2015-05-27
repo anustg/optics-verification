@@ -173,6 +173,9 @@ class ConicalFrustum(InfiniteCone):
         c = float((r2 - r1)/(z2 - z1))
         a = float((r2*z1 - r1*z2) / (r2 - r1))
         InfiniteCone.__init__(self, c=c, a=a)
+
+        self.r1 = float(r1)
+        self.r2 = float(r2)
         self.z1 = float(z1)
         self.z2 = float(z2)
     
@@ -225,18 +228,18 @@ class ConicalFrustum(InfiniteCone):
             coordinate (respectively) of point (i,j) in the mesh.
         """
         # Generate a circular-edge mesh using polar coordinates.    
-        r1 = self.c * (self.z1 - self.a)
-        r2 = self.c * (self.z2 - self.a)
+        r1 = self.r1
+        r2 = self.r2
         rs = N.r_[min(r1,r2),max(r1,r2)]
 
         if resolution is None:
-            angres = 2*N.pi / 40
+            angres = 2.*N.pi / 40
         else:
-            angres = 2*N.pi * (resolution / 2*N.pi*max(r1,r2))
-
+            angres = 2.*N.pi / resolution
+            
         # Make the circumferential points at the requested resolution.
-        ang_end = 2*N.pi
-        angs = N.r_[0:ang_end+angres:angres]
+        ang_end = 2.*N.pi
+        angs = N.r_[0.:ang_end+angres:angres]
 
         x = N.outer(rs, N.cos(angs))
         y = N.outer(rs, N.sin(angs))

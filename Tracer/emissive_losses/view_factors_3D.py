@@ -58,8 +58,11 @@ class RTVF():
 		stdev_test = self.stdev_VF<=(self.precision*self.VF_esperance/3.)
 		reciprocity_test = self.stdev_reciprocity<=(2.*self.precision)
 
-		self.progress = N.logical_not(N.logical_and(stdev_test, reciprocity_test))
-
+		self.progress = (N.logical_not(N.logical_and(stdev_test, reciprocity_test))).any(axis=1)
+		#print self.progress
+		#print (self.progress==True).any(axis=1)
+		#self.ray_counts = self.progress*self.num_rays
+		#print self.ray_counts
 
 class Two_N_parameters_cavity_RTVF(RTVF):
 	'''
@@ -75,6 +78,7 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 	def __init__(self, apertureRadius, frustaRadii, frustaDepths, coneDepth, el_FRUs, el_CON, num_rays=10000, precision=0.01):
 
 		RTVF.__init__(self, num_rays, precision)
+
 		self.apertureRadius = apertureRadius
 		self.frustaRadii = frustaRadii
 		self.frustaDepths = frustaDepths
@@ -129,8 +133,8 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 		self.areas = areas
 
 		#_______________________________________________________________________________________
-		self.ray_counts = N.ones(len(areas))*int(self.num_rays/len(areas))
-
+		#self.ray_counts = N.ones(len(areas))*int(self.num_rays/len(areas))
+		self.ray_counts = N.ones(len(areas))*int(self.num_rays)
 
 		# Build the geometry:___________________________________________________________________
 		max_depth = N.sum(frustaDepths)
@@ -138,20 +142,26 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 		AP = AssembledObject(surfs=[Surface(RoundPlateGM(Re=apertureRadius), LambertianReceiver(absorptivity=1.))], transform = None)
 
 		FRU = []
+
 		# 1st frustum:
 		if apertureRadius==frustaRadii[0]: # Cylinder
 			frustum = AssembledObject(surfs=[Surface(FiniteCylinder(diameter=frustaRadii[0]*2., height=frustaDepths[0]), LambertianReceiver(absorptivity=1.))], transform=translate(z=frustaDepths[0]/2.))
+		elif frustaDepths[0] == 0.: # flat plate
+			print 'FLAT!'
+			frustum = AssembledObject(surfs=[Surface(RoundPlateGM(Re=apertureRadius, Ri=frustaRadii[0]), LambertianReceiver(absorptivity=1.))], transform=translate(z=N.sum(frustaDepths[:i])))
 		else: # frustum
 			frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=apertureRadius, z2=frustaDepths[0], r2=frustaRadii[0]), LambertianReceiver(absorptivity=1.))], transform=None)
 		FRU.append(frustum)
 		# next frusta:
 		for i in xrange(1,len(frustaRadii)):
-			if self.frustaRadii[i-1]==self.frustaRadii[i]:
-				frustum = AssembledObject(surfs=[Surface(FiniteCylinder(diameter=self.frustaRadii[i]*2., height=self.frustaDepths[i]), LambertianReceiver(absorptivity=1.))], transform=translate(z=N.sum(self.frustaDepths[:i])+self.frustaDepths[i]/2.))
-			elif self.frustaDepths[i] < 0.:
-				frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=self.frustaRadii[i-1], z2=-self.frustaDepths[i], r2=self.frustaRadii[i]), LambertianReceiver(absorptivity=1.))], transform=N.dot(translate(z=N.sum(self.frustaDepths[:i])),rotx(N.pi)))
+			if frustaRadii[i-1]==frustaRadii[i]:
+				frustum = AssembledObject(surfs=[Surface(FiniteCylinder(diameter=frustaRadii[i]*2., height=frustaDepths[i]), LambertianReceiver(absorptivity=1.))], transform=translate(z=N.sum(frustaDepths[:i])+frustaDepths[i]/2.))
+			elif frustaDepths[i] < 0.:
+				frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=frustaRadii[i-1], z2=-frustaDepths[i], r2=frustaRadii[i]), LambertianReceiver(absorptivity=1.))], transform=N.dot(translate(z=N.sum(frustaDepths[:i])),rotx(N.pi)))
+			elif frustaDepths[i] > 0.:
+				frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=frustaRadii[i-1], z2=frustaDepths[i], r2=frustaRadii[i]), LambertianReceiver(absorptivity=1.))], transform=translate(z=N.sum(frustaDepths[:i])))
 			else:
-				frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=self.frustaRadii[i-1], z2=self.frustaDepths[i], r2=self.frustaRadii[i]), LambertianReceiver(absorptivity=1.))], transform=translate(z=N.sum(self.frustaDepths[:i])))
+				frustum = AssembledObject(surfs=[Surface(RoundPlateGM(Re=frustaRadii[i-1], Ri=frustaRadii[i]), LambertianReceiver(absorptivity=1.))], transform=translate(z=N.sum(frustaDepths[:i])))
 			FRU.append(frustum)
 
 		# Cone section:
@@ -161,6 +171,7 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 			rays_cone=True
 		elif coneDepth == 0.: # Round flat plates
 			CON = AssembledObject(surfs=[Surface(RoundPlateGM(Re=frustaRadii[-1]), LambertianReceiver(absorptivity=1.))], transform=translate(z=max_depth))
+			rays_cone=True
 		else: # coneDepth < 0 Inward cone
 			CON = AssembledObject(surfs=[Surface(FiniteCone(r=frustaRadii[-1], h=-coneDepth), LambertianReceiver(absorptivity=1.))], transform=translate(z=max_depth+coneDepth))
 			rays_cone=False
@@ -174,16 +185,12 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 		self.CON = CON
 		self.FRU = FRU
 
-		apertureRadius = self.apertureRadius
-		frustaRadii = self.frustaRadii
-		frustaDepths = self.frustaDepths
-		coneDepth = self.coneDepth
 		el_FRUs = self.el_FRUs
 		el_CON = self.el_CON
 
 		vf_tracer = TracerEngine(self.A)
 		itmax = 1 # stop iteration after this many ray bundles were generated (i.e. after the original rays intersected some surface this many times).
-		minener = 1e-15 # minimum energy threshold
+		vf_tracer.minener = 1e-15 # minimum energy threshold
 
 		while (self.progress==True).any():
 
@@ -193,25 +200,24 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 
 				SA = solar_disk_bundle(self.ray_counts[0], center=N.vstack([0,0,0]), direction=N.array([0,0,1]), radius=apertureRadius, ang_range=N.pi/2., flux=1./(N.pi*apertureRadius**2))
 
-				vf_tracer.ray_tracer(SA, itmax, minener, tree = True)
+				vf_tracer.ray_tracer(SA, itmax, vf_tracer.minener, tree = True)
 				#view = Renderer(vf_tracer)
-				#view.show_geom()
-				#vf_tracer.minener=1e-5
 				#view.show_rays()
 				self.alloc_VF(0)
 
-
 			for elf in xrange(int(el_FRUs[0])):
 				if self.ray_counts[elf+1] != 0.:
+					center = N.vstack([0,0,elf*frustaDepths[0]/el_FRUs[0]])
+					r0 = apertureRadius+elf*(frustaRadii[0]-apertureRadius)/el_FRUs[0]
+					r1 = apertureRadius+(elf+1)*(frustaRadii[0]-apertureRadius)/el_FRUs[0]
+					depth = frustaDepths[0]/el_FRUs[0]
+					num_rays = self.ray_counts[elf+1]
+					rays_in = True
 
-					if apertureRadius==frustaRadii[0]:
-						S = vf_cylinder_bundle(self.ray_counts[elf+1], rc=frustaRadii[0], lc=frustaDepths[0]/el_FRUs[0], center=N.vstack([0,0,elf*frustaDepths[0]/el_FRUs[0]]), direction=N.array([0,0,1]), rays_in=True)
-					else:
-						S = vf_frustum_bundle(self.ray_counts[elf+1], r0=apertureRadius+elf*(frustaRadii[0]-apertureRadius)/el_FRUs[0], r1=apertureRadius+(elf+1)*(frustaRadii[0]-apertureRadius)/el_FRUs[0], depth=frustaDepths[0]/el_FRUs[0], center=N.vstack([0,0,elf*frustaDepths[0]/el_FRUs[0]]), direction=N.array([0,0,1]), rays_in=True)
+					S = self.gen_source(num_rays, r0, r1, depth, center, rays_in)
 
-					vf_tracer.ray_tracer(S, itmax, minener, tree = True)
+					vf_tracer.ray_tracer(S, itmax, vf_tracer.minener, tree = True)
 					#view = Renderer(vf_tracer)
-					#vf_tracer.minener=minener
 					#view.show_rays()
 					self.alloc_VF(elf+1)
 
@@ -219,40 +225,47 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 			for n in xrange(1,len(el_FRUs)):
 				for elf in xrange(int(el_FRUs[n])):
 					if self.ray_counts[1+N.sum(el_FRUs[:n+1])-el_FRUs[n]+elf] != 0.:
-	
+						center = N.vstack([0,0,N.sum(frustaDepths[:n])+elf*frustaDepths[n]/el_FRUs[n]])
+						r0 = frustaRadii[n-1]+elf*(frustaRadii[n]-frustaRadii[n-1])/el_FRUs[n]
+						r1 = frustaRadii[n-1]+(elf+1)*(frustaRadii[n]-frustaRadii[n-1])/el_FRUs[n]
+						depth = frustaDepths[n]/el_FRUs[n]
+						num_rays = self.ray_counts[1+N.sum(el_FRUs[:n+1])-el_FRUs[n]+elf]
+
 						if frustaDepths[n] < 0.:
-							rays_in_frun = False
+							rays_in = False
 						else:
-							rays_in_frun = True
+							rays_in = True
 
-						if frustaRadii[n-1]==frustaRadii[n]:
-							S = vf_cylinder_bundle(self.ray_counts[1+N.sum(el_FRUs[:n+1])-el_FRUs[n]+elf], rc=frustaRadii[n], lc=frustaDepths[n]/el_FRUs[n], center=N.vstack([0,0,N.sum(frustaDepths[:n])+elf*frustaDepths[n]/el_FRUs[n]]), direction=N.array([0,0,1]), rays_in=rays_in_frun)
-						else:
-		
-							S = vf_frustum_bundle(self.ray_counts[1+N.sum(el_FRUs[:n+1])-el_FRUs[n]+elf], r0=frustaRadii[n-1]+elf*(frustaRadii[n]-frustaRadii[n-1])/el_FRUs[n], r1=frustaRadii[n-1]+(elf+1)*(frustaRadii[n]-frustaRadii[n-1])/el_FRUs[n], depth=frustaDepths[n]/el_FRUs[n], center=N.vstack([0,0,N.sum(frustaDepths[:n])+elf*frustaDepths[n]/el_FRUs[n]]), direction=N.array([0,0,1]), rays_in=rays_in_frun)
+						S = self.gen_source(num_rays, r0, r1, depth, center, rays_in)
 
-						vf_tracer.ray_tracer(S, itmax, minener, tree = True)
+						vf_tracer.ray_tracer(S, itmax, vf_tracer.minener, tree = True)
 						#view = Renderer(vf_tracer)
-						#vf_tracer.minener=minener
 						#view.show_rays()
+
 						self.alloc_VF(1+N.sum(el_FRUs[:n+1])-el_FRUs[n]+elf)
+			#view = Renderer(vf_tracer)
+			#view.show_rays()
 
 			for elc in xrange(int(el_CON)):
 				if self.ray_counts[N.sum(el_FRUs)+elc+1] != 0.:
+					center = N.vstack([0,0,N.sum(frustaDepths)+coneDepth*elc/el_CON])
+					r0 = frustaRadii[-1]+elc*(-frustaRadii[-1])/el_CON
+					r1 = frustaRadii[-1]+(elc+1)*(-frustaRadii[-1])/el_CON
+					depth = coneDepth/el_CON
+					num_rays = self.ray_counts[N.sum(el_FRUs)+elc+1]
+					rays_in = rays_cone
 
-					if coneDepth==0.:
-						S = solar_disk_bundle(self.ray_counts[N.sum(el_FRUs)+elc+1], center=N.vstack([0,0,N.sum(frustaDepths)]), direction=N.array([0,0,-1]), radius=frustaRadii[-1]+elc*(-frustaRadii[-1])/el_CON, ang_range=N.pi/2., flux=1./(N.pi*frustaRadii[-1]**2), radius_in=frustaRadii[-1]+(elc+1)*(-frustaRadii[-1])/el_CON)
+					S = self.gen_source(num_rays, r0, r1, depth, center, rays_in)
 
-					else:
-						S = vf_frustum_bundle(self.ray_counts[N.sum(el_FRUs)+elc+1], r0=frustaRadii[-1]+elc*(-frustaRadii[-1])/el_CON, r1=frustaRadii[-1]+(elc+1)*(-frustaRadii[-1])/el_CON, depth=coneDepth/el_CON, center=N.vstack([0,0,N.sum(frustaDepths)+coneDepth*elc/el_CON]), direction=N.array([0,0,1]), rays_in=rays_cone)
-
-					vf_tracer.ray_tracer(S, itmax, minener, tree = True)
+					vf_tracer.ray_tracer(S, itmax, vf_tracer.minener, tree = True)
+					#view = Renderer(vf_tracer)
+					#view.show_rays()
 					self.alloc_VF(N.sum(el_FRUs)+elc+1)
 
 
 			self.p += self.ray_counts
 			self.test_precision()
-			print '		Progress:', N.sum(self.progress),'/', N.shape(self.progress)[0]**2.,'; Pass duration:', time.clock()-tp, 's'
+			print '		Progress:', N.sum(self.progress),'/', len(self.progress),'; Pass duration:', time.clock()-tp, 's'
 			'''
 			if self.p[0]>5e6:
 				self.stdev_store = N.array(self.stdev_store)
@@ -270,6 +283,19 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 			'''
 		t1=time.clock()-self.t0
 		print '	VF calculation time:',t1,'s'
+
+	def gen_source(self, num_rays, r0, r1, depth, center, rays_in):
+		'''
+		Generate a source for a specific element		
+		'''
+		if r0==r1:
+			S = vf_cylinder_bundle(num_rays=num_rays, rc=r0, lc=depth, center=center, direction=N.array([0,0,1]), rays_in=rays_in)
+		elif depth==0.:
+			S = solar_disk_bundle(num_rays=num_rays, center=center, direction=N.array([0,0,N.sign(r1-r0)]), radius=r0, ang_range=N.pi/2., flux=1./(N.pi*N.abs(r0**2-r1**2)), radius_in=r1)
+		else:
+			S = vf_frustum_bundle(num_rays=num_rays, r0=r0, r1=r1, depth=depth, center=center, direction=N.array([0,0,1]), rays_in=rays_in)
+
+		return S
 
 	def alloc_VF(self, n):
 		'''
@@ -297,7 +323,6 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 
 			if j == 0:
 				self.VF[n,j] = N.sum(Aperture_abs)
-
 
 			elif j <= len(el_FRUs):
 				for i in xrange(int(el_FRUs[j-1])):

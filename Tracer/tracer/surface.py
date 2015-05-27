@@ -135,7 +135,7 @@ class Surface(HasFrame):
 
         o = self.get_optics_manager()
         if hasattr(o,'get_all_hits'):
-            e, h = o.get_all_hits()
+            e, h = o.get_all_hits()[:2]
             # plot the histogram into the scenegraph
             """
                 How to do this?

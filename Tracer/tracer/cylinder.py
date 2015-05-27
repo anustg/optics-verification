@@ -26,7 +26,7 @@ class InfiniteCylinder(QuadricGM):
         local_norm /= N.sqrt(N.sum(hit[:2]**2, axis=0))
         
         # Choose whether the normal is inside or outside:
-        local_norm[:, N.sum(local_norm[:2] * dir_loc[:2], axis=0) > 0] *= -1
+        local_norm[:, N.sum(local_norm[:2] * dir_loc[:2], axis=0) > 1e-10] *= -1
         
         # Back to global coordinates:
         return N.dot(self._working_frame[:3,:3], local_norm)
@@ -86,7 +86,7 @@ class FiniteCylinder(InfiniteCylinder):
         height = N.sum(N.linalg.inv(self._working_frame)[None,2,:,None] * \
             N.concatenate((coords, N.ones((2,1,coords.shape[-1]))), axis=1), axis=1)
         inside = (abs(height) <= self._half_h)
-        positive = prm > 1e-15
+        positive = prm > 1e-10
         
         hitting = inside & positive
         select[N.logical_and(*hitting)] = 1
@@ -112,7 +112,7 @@ class FiniteCylinder(InfiniteCylinder):
         if resolution is None:
             angres = 2*N.pi / 40
         else:
-            angres = 2*N.pi * (resolution / (2*N.pi*self._R))
+            angres = 2*N.pi * (resolution / (2.*N.pi*self._R))
 
         # note: current mesh has no detail in the axial direction, just start/end points -- JP
         h = N.r_[[-self._half_h, self._half_h]]

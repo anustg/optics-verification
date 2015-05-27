@@ -36,7 +36,7 @@ class FlatGeometryManager(GeometryManager):
         
         # Vet out parallel rays:
         dt = N.dot(d.T, frame[:3,2])
-        unparallel = abs(dt) > 0.
+        unparallel = abs(dt) > 1e-10
         
         # `params` holds the parametric location of intersections along the ray 
         params = N.empty(n)
@@ -47,11 +47,11 @@ class FlatGeometryManager(GeometryManager):
         
         # Takes into account a negative depth
         # Note that only the 3rd row of params is relevant here!
-        negative = params < 0.
+        negative = params < 1e-10
         params[negative] = N.Inf
         
         self._params = params
-        self._backside = dt > 0.
+        self._backside = dt > 1e-10
         return params
         
     def select_rays(self, idxs):
@@ -263,13 +263,12 @@ class RoundPlateGM(FiniteFlatGM):
         # Generate a circular-edge mesh using polar coordinates.        
         # Make the circumferential points at the requested resolution.
         if resolution == None:
-            resolution = 40.
+            resolution = 40
         angs = N.r_[0.:2.*N.pi+2.*N.pi/resolution:2.*N.pi/resolution]
         if self._Ri != None:
-            rs = self._Ri+N.arange(resolution+1)*(self._Re-self._Ri)/(resolution)
+            rs = self._Ri+(self._Re-self._Ri)/resolution*N.arange(0, resolution+1)
         else:
-            r_end = self._Re+self._Re/resolution
-            rs = N.arange(0.,r_end,self._Re/resolution)
+            rs = self._Re/resolution*N.arange(0, resolution+1)
    
         x = N.outer(rs, N.cos(angs))
         y = N.outer(rs, N.sin(angs))

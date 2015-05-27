@@ -113,6 +113,8 @@ class TwoNparamcav(Assembly):
 			# 1st frustum:
 			if self.apertureRadius==self.frustaRadii[0]: # Cylinder
 				frustum = AssembledObject(surfs=[Surface(FiniteCylinder(diameter=self.apertureRadius*2, height=self.frustaDepths[0]), LambertianReceiver(self.absReceiver[1]))], transform=translate(z=self.frustaDepths[0]/2.))
+			elif self.frustaDepths[0] == 0.:
+				frustum = AssembledObject(surfs=[Surface(RoundPlateGM(Re=self.apertureRadius, Ri=self.frustaRadii[0]), LambertianReceiver(self.absReceiver[1]))], transform=translate(z=N.sum(self.frustaDepths[:i])))
 			else:
 				frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=self.apertureRadius, z2=self.frustaDepths[0], r2=self.frustaRadii[0]), LambertianReceiver(absorptivity=self.absReceiver[1]))], transform=None)
 			FRU.append(frustum)
@@ -122,39 +124,13 @@ class TwoNparamcav(Assembly):
 					frustum = AssembledObject(surfs=[Surface(FiniteCylinder(diameter=self.frustaRadii[i-1]*2, height=self.frustaDepths[i]), LambertianReceiver(self.absReceiver[1+i]))], transform=translate(z=N.sum(self.frustaDepths[:i])+self.frustaDepths[i]/2.))
 				elif self.frustaDepths[i] < 0.:
 					frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=self.frustaRadii[i-1], z2=-self.frustaDepths[i], r2=self.frustaRadii[i]), LambertianReceiver(absorptivity=self.absReceiver[1+i]))], transform=N.dot(translate(z=N.sum(self.frustaDepths[:i])),rotx(N.pi)))
-				else:
+				elif self.frustaDepths[i] > 0.:
 					frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=self.frustaRadii[i-1], z2=self.frustaDepths[i], r2=self.frustaRadii[i]), LambertianReceiver(absorptivity=self.absReceiver[1+i]))], transform=translate(z=N.sum(self.frustaDepths[:i])))
-				FRU.append(frustum)
-
-		if specular_receiver==True:
-			# Cone
-			if self.coneDepth < 0.: # self.coneDepth < 0 Inward cone
-				CON = AssembledObject(surfs=[Surface(FiniteCone(r=self.frustaRadii[-1], h=-self.coneDepth), ReflectiveReceiver(self.absReceiver[-1]))], transform=translate(z=N.sum(frustaDepths)+self.coneDepth))
-
-			elif self.coneDepth == 0.: # Round flat plates
-				CON = AssembledObject(surfs=[Surface(RoundPlateGM(Re=self.frustaRadii[-1]), ReflectiveReceiver(self.absReceiver[-1]))], transform=translate(z=N.sum(frustaDepths)))
-
-			else:	 # == cone depth > 0: Outgoing cone
-				trc = N.dot(rotx(N.pi), translate(z=-N.sum(frustaDepths)-self.coneDepth)) # Cone frame transformation
-				CON = AssembledObject(surfs=[Surface(FiniteCone(r=self.frustaRadii[-1], h=self.coneDepth), ReflectiveReceiver(self.absReceiver[-1]))], transform=trc)
-
-			FRU = []
-			# 1st frustum:
-			if self.apertureRadius==self.frustaRadii[0]: # Cylinder
-				frustum = AssembledObject(surfs=[Surface(FiniteCylinder(diameter=self.apertureRadius*2, height=self.frustaDepths[0]), ReflectiveReceiver(self.absReceiver[1]))], transform=translate(z=self.frustaDepths[0]/2.))
-			else:
-				frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=self.apertureRadius, z2=self.frustaDepths[0], r2=self.frustaRadii[0]), ReflectiveReceiver(absorptivity=self.absReceiver[1]))], transform=None)
-			FRU.append(frustum)
-			# next frusta:
-			for i in xrange(1,len(frustaRadii)):
-				if self.frustaRadii[i-1]==self.frustaRadii[i]: # Cylinder
-					frustum = AssembledObject(surfs=[Surface(FiniteCylinder(diameter=self.frustaRadii[i-1]*2, height=self.frustaDepths[i]), ReflectiveReceiver(self.absReceiver[1+i]))], transform=translate(z=N.sum(self.frustaDepths[:i])+self.frustaDepths[i]/2.))
-				elif self.frustaDepths[i] < 0.:
-					frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=self.frustaRadii[i-1], z2=-self.frustaDepths[i], r2=self.frustaRadii[i]), ReflectiveReceiver(absorptivity=self.absReceiver[1+i]))], transform=N.dot(translate(z=N.sum(self.frustaDepths[:i])),rotx(N.pi)))
 				else:
-					frustum = AssembledObject(surfs=[Surface(ConicalFrustum(z1=0., r1=self.frustaRadii[i-1], z2=self.frustaDepths[i], r2=self.frustaRadii[i]), ReflectiveReceiver(absorptivity=self.absReceiver[1+i]))], transform=translate(z=N.sum(self.frustaDepths[:i])))
-				FRU.append(frustum)
+					frustum = AssembledObject(surfs=[Surface(RoundPlateGM(Re=self.frustaRadii[i-1], Ri=self.frustaRadii[i]), ReflectiveReceiver(self.absReceiver[-1]))], transform=translate(z=N.sum(self.frustaDepths[:i])))
 
+				FRU.append(frustum)
+				
 		# Receiver Assembly ----------------------------------------
 
 		self.CON = CON

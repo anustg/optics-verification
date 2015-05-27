@@ -134,8 +134,8 @@ class ParabolicDishGM(Paraboloid):
             coordinate (respectively) of point (i,j) in the mesh.
         """
         if resolution is None:
-            resolution = 2*N.pi*self._R / 40
-
+            #resolution = 2*N.pi*self._R / 40
+            resolution = 40
         # Generate a circular-edge mesh using polar coordinates.
         r_end = self._R + 1./100./resolution
         rs = N.r_[0:r_end:1./resolution]
