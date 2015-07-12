@@ -215,6 +215,7 @@ class RectangularParabolicDishGM(Paraboloid):
         self._half_dims = N.c_[[width, height]]/2
         #self._R = float(math.sqrt((width/2)**2 + (height/2)**2))
         self._w, self._h = width/2., height/2.
+<<<<<<< HEAD
 
     def _select_coords(self, coords, prm):
         """
@@ -251,6 +252,44 @@ class RectangularParabolicDishGM(Paraboloid):
 
         return select
 
+=======
+
+    def _select_coords(self, coords, prm):
+        """
+        Choose between two intersection points on a quadric surface.
+        This implementation extends QuadricGM's behaviour by not choosing
+        intersections outside the rectangular aperture.
+        
+        Arguments:
+        coords - a 2 by 3 by n array whose each column is the global coordinates
+            of one intersection point of a ray with the sphere.
+        prm - the corresponding parametric location on the ray where the
+            intersection occurs.
+
+        Returns:
+        The index of the selected intersection, or None if neither will do.
+        """
+        select = QuadricGM._select_coords(self, coords, prm)
+
+        coords = N.concatenate((coords, N.ones((2,1,coords.shape[2]))), axis = 1)
+        # assumed no additional parameters to coords, axis = 1
+        #local = N.sum(N.linalg.inv(self._working_frame)[None,:2,:,None]*coords, axis=1)
+        local = N.sum(N.linalg.inv(self._working_frame)[None,:2,:,None] * \
+            coords[:,None,:,:], axis=2)
+
+        abs_x = abs(local[:,0,:])
+        abs_y = abs(local[:,1,:])
+        outside = abs_x > self._w
+        outside |= abs_y > self._h
+        inside = (~outside) & (prm > 1e-9)
+
+        select[~N.logical_or(*inside)] = N.nan
+        one_hit = N.logical_xor(*inside)
+        select[one_hit] = N.nonzero(inside.T[one_hit,:])[1]
+
+        return select
+
+>>>>>>> fbaccf9cbf50869717274e95d576e8c75f1e125b
     def mesh(self, resolution=None):
         """
         Represent the surface as a mesh in local coordinates.
