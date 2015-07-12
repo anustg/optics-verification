@@ -201,7 +201,6 @@ class HexagonalParabolicDishGM(Paraboloid):
 
         return select
 
-# added
 class RectangularParabolicDishGM(Paraboloid):
     """
     A paraboloid that marks rays outside a rectangle perimeter as missing i.e.
@@ -215,7 +214,7 @@ class RectangularParabolicDishGM(Paraboloid):
         self._half_dims = N.c_[[width, height]]/2
         #self._R = float(math.sqrt((width/2)**2 + (height/2)**2))
         self._w, self._h = width/2., height/2.
-<<<<<<< HEAD
+
 
     def _select_coords(self, coords, prm):
         """
@@ -252,8 +251,6 @@ class RectangularParabolicDishGM(Paraboloid):
 
         return select
 
-=======
-
     def _select_coords(self, coords, prm):
         """
         Choose between two intersection points on a quadric surface.
@@ -289,7 +286,6 @@ class RectangularParabolicDishGM(Paraboloid):
 
         return select
 
->>>>>>> fbaccf9cbf50869717274e95d576e8c75f1e125b
     def mesh(self, resolution=None):
         """
         Represent the surface as a mesh in local coordinates.
@@ -314,6 +310,4 @@ class RectangularParabolicDishGM(Paraboloid):
         print(">>> heliostat", x, y, z)
         return x, y, z
     
-# added end
-    
-# vim: et:ts=4
+
