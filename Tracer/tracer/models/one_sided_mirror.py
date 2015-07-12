@@ -4,11 +4,13 @@
 from ..object import AssembledObject
 from ..surface import Surface
 from ..flat_surface import RectPlateGM
+from ..paraboloid import ParabolicDishGM, RectangularParabolicDishGM
 from .. import optics_callables as opt
 
 from numpy import r_
 import numpy as N
 import types
+import math #
 
 def surfaces_for_next_iteration(self, rays, surface_id):
     """
@@ -44,6 +46,19 @@ def rect_one_sided_mirror(width, height, absorptivity=0.):
     obj.surfaces_for_next_iteration = types.MethodType(
         surfaces_for_next_iteration, obj, obj.__class__)
     return obj
+
+# added
+def rect_para_one_sided_mirror(width, height, focal_length, absorptivity=0.):
+    surf = Surface(RectangularParabolicDishGM(width, height, focal_length),
+                   opt.RealReflective_OneSide(absorptivity, 1e-3))
+    print('generated surface')
+    obj = AssembledObject(surfs = [surf])
+    print('assembled surface')
+    obj.surfaces_for_next_iteration = types.MethodType(
+        surfaces_for_next_iteration, obj, obj.__class__)
+    print('set surfaces for next iteration')
+    return obj
+# added end
 
 def one_sided_receiver(width, height, absorptivity=1.):
     """

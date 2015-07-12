@@ -13,20 +13,20 @@ from scipy.constants import degree
 from tracer.ray_bundle import RayBundle
 from tracer.sources import pillbox_sunshape_directions
 from tracer.assembly import Assembly
-from tracer.spatial_geometry import roty, rotation_to_z
+from tracer.spatial_geometry import roty, rotx, rotation_to_z
 from tracer.tracer_engine import TracerEngine
 
 from tracer.models.one_sided_mirror import one_sided_receiver
 from tracer.models.heliostat_field import HeliostatField, radial_stagger, solar_vector
 
+# For the flux map:
+import matplotlib.pyplot as plt
+
 class TowerScene():
     # Location of the sun:
-    sun_az = 80.
-    sun_elev = 45.
-    
-    # Heliostat placement distance:
-    radial_res = 1.
-    ang_res = N.pi/8
+    sun_az = 80. # degrees from positive X-axis
+    sun_elev = 45. # degrees from XY-plane
+
     
     def __init__(self):
         self.gen_plant() 
@@ -40,13 +40,15 @@ class TowerScene():
         return rays
     
     def gen_plant(self):
-        xy = radial_stagger(-N.pi/4, N.pi/4 + 0.0001, self.ang_res, 5., 20., self.radial_res)
-        self.pos = N.hstack((xy, N.zeros((xy.shape[0], 1))))
-        self.field = HeliostatField(self.pos, 0.5, 0.5, 0, 10)
+        # import custom coordinate file
+        self.pos = N.loadtxt("sandia_hstat_coordinates.csv", delimiter=',')
+        self.pos *= 0.1
+        # set heliostat field characteristics: 0.52m*0.52m, abs = 0, aim_h = 61
+        self.field = HeliostatField(self.pos, 6.09e-1, 6.09e-1, 0, 6.1)
 
-        self.rec, recobj = one_sided_receiver(1., 1.)
-        rec_trans = roty(N.pi/2)
-        rec_trans[2,3] = 10
+        self.rec, recobj = one_sided_receiver(1.1, 1.1)
+        rec_trans = rotx(N.pi/-2) # originally N.pi/2, changed to minus
+        rec_trans[2,3] = 6.1 # height of the tower
         recobj.set_transform(rec_trans)
 
         self.plant = Assembly(objects=[recobj], subassemblies=[self.field])
@@ -58,7 +60,6 @@ class TowerScene():
         """Generate a flux map using much more rays than drawn"""
         # Generate a large ray bundle using a radial stagger much denser
         # than the field.
-        
         sun_vec = solar_vector(self.sun_az*degree, self.sun_elev*degree)
         
         hstat_rays = 20
@@ -76,11 +77,27 @@ class TowerScene():
         # Perform the trace:
         e = TracerEngine(self.plant)
         e.ray_tracer(rays, 100, 0.05, tree=True)
-        e.minener = 1e-5
+        e.minener = 1e-6 # default 1e-5
 
-		# Render:
+	# Render:
         trace_scene = Renderer(e)
         trace_scene.show_rays()
+
+        # Initialise a histogram of hits:
+        energy, pts = self.rec.get_optics_manager().get_all_hits()
+        x, y = self.rec.global_to_local(pts)[:2]
+        rngx = 0.55 #0.5
+        rngy = 0.55 #0.5
+        
+        bins = 55 #50
+        H, xbins, ybins = N.histogram2d(x, y, bins, \
+            range=([-rngx,rngx], [-rngy,rngy]), weights=energy)
+        print(H, xbins, ybins)
+
+        extent = [ybins[0], ybins[-1], xbins[-1], xbins[0]]
+        plt.imshow(H, extent=extent, interpolation='nearest')
+        plt.colorbar()
+        plt.show()
 
 scene = TowerScene()
 scene.aim_field()

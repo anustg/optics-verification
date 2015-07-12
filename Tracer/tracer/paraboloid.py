@@ -49,7 +49,8 @@ class Paraboloid(QuadricGM):
 
         normals = N.dot(self._working_frame[:3,:3], local_unit)
         
-        return normals  
+        return normals
+
     
     def get_ABC(self, ray_bundle):
         """
@@ -138,7 +139,7 @@ class ParabolicDishGM(Paraboloid):
             resolution = 40
         # Generate a circular-edge mesh using polar coordinates.
         r_end = self._R + 1./100./resolution
-        rs = N.r_[0:r_end:1./resolution]
+        rs = N.r_[0:r_end:resolution] # previously 1./resolution; error
         # Make the circumferential points at the requested resolution.
         ang_end = 2*N.pi + 1./(self._R*resolution)
         angs = N.r_[0:ang_end:1./(self._R*resolution)]
@@ -200,5 +201,80 @@ class HexagonalParabolicDishGM(Paraboloid):
 
         return select
 
+# added
+class RectangularParabolicDishGM(Paraboloid):
+    """
+    A paraboloid that marks rays outside a rectangle perimeter as missing i.e.
+    the dish has a rectangular aperture. The parameters for the paraboloid's
+    equations are determined from the focal length. The sides of the rectangle
+    are oriented parallel to the X, Y axes.
+    """
+    def __init__(self, width, height, focal_length):
+        par_param = 2*math.sqrt(focal_length)
+        Paraboloid.__init__(self, par_param, par_param)
+        self._half_dims = N.c_[[width, height]]/2
+        #self._R = float(math.sqrt((width/2)**2 + (height/2)**2))
+        self._w, self._h = width/2., height/2.
 
+    def _select_coords(self, coords, prm):
+        """
+        Choose between two intersection points on a quadric surface.
+        This implementation extends QuadricGM's behaviour by not choosing
+        intersections outside the rectangular aperture.
+        
+        Arguments:
+        coords - a 2 by 3 by n array whose each column is the global coordinates
+            of one intersection point of a ray with the sphere.
+        prm - the corresponding parametric location on the ray where the
+            intersection occurs.
+
+        Returns:
+        The index of the selected intersection, or None if neither will do.
+        """
+        select = QuadricGM._select_coords(self, coords, prm)
+
+        coords = N.concatenate((coords, N.ones((2,1,coords.shape[2]))), axis = 1)
+        # assumed no additional parameters to coords, axis = 1
+        #local = N.sum(N.linalg.inv(self._working_frame)[None,:2,:,None]*coords, axis=1)
+        local = N.sum(N.linalg.inv(self._working_frame)[None,:2,:,None] * \
+            coords[:,None,:,:], axis=2)
+
+        abs_x = abs(local[:,0,:])
+        abs_y = abs(local[:,1,:])
+        outside = abs_x > self._w
+        outside |= abs_y > self._h
+        inside = (~outside) & (prm > 1e-9)
+
+        select[~N.logical_or(*inside)] = N.nan
+        one_hit = N.logical_xor(*inside)
+        select[one_hit] = N.nonzero(inside.T[one_hit,:])[1]
+
+        return select
+
+    def mesh(self, resolution=None):
+        """
+        Represent the surface as a mesh in local coordinates.
+        
+        Arguments:
+        resolution - in points per unit length (so the number of points 
+            returned is O(A*resolution**2) for area A)
+        
+        Returns:
+        x, y, z - each a 2D array holding in its (i,j) cell the x, y, and z
+            coordinate (respectively) of point (i,j) in the mesh.
+        """
+        if resolution == None:
+            resolution = 40
+        points = N.ceil(resolution*self._half_dims.reshape(-1)*2)
+        points[points < 2] = 2 # At least the edges of the range.
+        xs = N.linspace(-self._half_dims[0,0], self._half_dims[0,0], points[0])
+        ys = N.linspace(-self._half_dims[1,0], self._half_dims[1,0], points[1])
+        
+        x, y = N.broadcast_arrays(xs[:,None], ys)
+        z = self.a*x**2 + self.b*y**2
+        print(">>> heliostat", x, y, z)
+        return x, y, z
+    
+# added end
+    
 # vim: et:ts=4

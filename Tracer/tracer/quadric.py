@@ -63,6 +63,7 @@ class QuadricGM(GeometryManager):
         num_inters = any_inters.sum()
         if num_inters == 0:
             self._vertices = vertices
+            self._params = params #
             return params      
 
         A = A[any_inters]
@@ -102,6 +103,7 @@ class QuadricGM(GeometryManager):
         
         # Storage for later reference:
         self._vertices = vertices
+        self._params = params #
   
         return params
     
