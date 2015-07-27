@@ -87,7 +87,7 @@ class TowerScene():
 
 			self.source_area = N.pi * radius**2
 
-			centre = N.c_[self.sun_vec + self.field_centre]
+			centre = N.c_[300*self.sun_vec + self.field_centre]
 			direction = N.array(-self.sun_vec)
 
 			rays = solar_disk_bundle(num_rays, centre, direction, radius, 4.65e-3, flux)
@@ -159,7 +159,7 @@ class TowerScene():
 		# dimension of the field.
 
 		#=============
-		render = True
+		render = False
 		#=============
 		
 		sun_vec = solar_vector(self.sun_az*degree, self.sun_elev*degree)
@@ -198,19 +198,19 @@ class TowerScene():
 		procs = 8
 		e.minener = 1e-10
 		timer_mcrt += time.clock()-mcrt
+		hits_helios=0
 
+		#while hits_helios < 20e6:
 		for i in xrange(iters):
 			print ' '
 			print ' '
-			print 'ITERATION ', i+1, ' of ', iters 
+			#print 'ITERATION ', i+1, ' of ', iters 
 			mcrt = time.clock()
 			# Perform the trace:
-			#rays = self.gen_rays(num_rays)
 			sources = []
 			self.flux = 1000.
 			for s in xrange(procs):
 				sources.append(self.gen_rays(num_rays/procs, flux=self.flux/procs))
-			#e.ray_tracer(self.gen_rays(num_rays), 3, e.minener, tree=True)
 			e.multi_ray_sim(sources, procs)
 			self.plant = e._asm
 			self.field._heliostats = self.plant._assemblies[0].get_surfaces()
@@ -239,6 +239,10 @@ class TowerScene():
 			# BLOCKAGE and SHADING
 			#===========================================================================
 			# Detect blockage and look for the parents of the blocked rays. Identify from which heliostats teh oarents come and associate the blockage losses to the heliostats where blockage is suffered.
+			
+			hz = N.ravel(N.nonzero(e.tree.bunds[1].get_vertices()[2] < (self.field._th-self.rec_h/2.)))
+			hits_helios = N.sum(hz)
+			print 'Useful rays:', hits_helios
 			# Get the 3rd bundle (after 2 hits):
 			bund_2 = e.tree._bunds[2].get_vertices()
 			bund_2_ener = e.tree._bunds[2].get_energy()
@@ -254,7 +258,6 @@ class TowerScene():
 			bund_1_bloc = bund_1[:, bund_1_helio_blocs]
 
 			# Screen the field to find where blocked rays originate:
-
 			for h in xrange(len(self.pos)):
 				# Get the information from the optics manager of the heliostat:
 				abs_hstats, hits_hstats, dirs_hstats = self.field._heliostats[h].get_optics_manager().get_all_hits()

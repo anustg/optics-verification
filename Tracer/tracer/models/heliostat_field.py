@@ -17,7 +17,7 @@ from .one_sided_mirror import rect_one_sided_mirror, rect_para_one_sided_mirror
 from ..spatial_geometry import rotx, roty, rotz
 
 class HeliostatField(Assembly):
-    def __init__(self, positions, width, height, absorpt, aim_height):
+    def __init__(self, positions, width, height, absorptivity, aim_height, sigma_xy):
         """
         Generates a field of heliostats, each being a rectangular one-sided
         mirror, initially pointing downward - for safety reasons, of course :)
@@ -39,16 +39,16 @@ class HeliostatField(Assembly):
         for pos in positions:
             hstat_pos = N.array(pos)
             focal_length = N.linalg.norm(tower_ht - hstat_pos)
-            print(focal_length)
-            print('initialising parabolic mirror here')
-            #hstat = rect_one_sided_mirror(width, height, absorpt)
-            hstat = rect_para_one_sided_mirror(width, height, focal_length, absorpt)
-            print('finished initialising heliostat')
+            #print(focal_length)
+          	# print('initialising parabolic mirror here')
+            hstat = rect_one_sided_mirror(width, height, absorptivity, sigma_xy)
+            #hstat = rect_para_one_sided_mirror(width, height, focal_length, absorpt, sigma_xy)
+            #print('finished initialising heliostat')
             trans = face_down.copy()
             trans[:3,3] = pos
             hstat.set_transform(trans)
             self._heliostats.append(hstat)
-            print('appended heliostat')
+            #print('appended heliostat')
             
         Assembly.__init__(self, objects=self._heliostats)
     
@@ -88,6 +88,8 @@ class HeliostatField(Assembly):
             trans[:3,3] = self._pos[hidx]
             
             self._heliostats[hidx].set_transform(trans)
+
+	return hstat_az, hstat_elev
 
 def solar_vector(azimuth, elevation):
     """

@@ -145,6 +145,7 @@ class DirectionAccountant(object):
         Returns:
         absorbed - the energy absorbed by each hit-point
         hits - the corresponding global coordinates for each hit-point.
+        directions - the corresponding unit vector directions for each hit-point.
         """
         if not len(self._absorbed):
             return N.array([]), N.array([]).reshape(3,0), N.array([]).reshape(3,0)
@@ -159,7 +160,7 @@ class ReflectiveReceiver(AbsorptionAccountant):
         AbsorptionAccountant.__init__(self, Reflective, absorptivity)
 
 class ReflectiveDetector(DirectionAccountant):
-    """A wrapper around AbsorptionAccountant with a Reflective optics"""
+    """A wrapper around DirectionAccountant with a Reflective optics"""
     def __init__(self, absorptivity):
         DirectionAccountant.__init__(self, Reflective, absorptivity)
 
@@ -168,10 +169,20 @@ class RealReflectiveReceiver(AbsorptionAccountant):
     def __init__(self, absorptivity=0, sigma_xy=0):
         AbsorptionAccountant.__init__(self, RealReflective, absorptivity, sigma_xy)
 
+class RealReflectiveReceiver_OneSide(AbsorptionAccountant):
+    """A wrapper around AbsorptionAccountant with a RealReflective_OneSide optics"""
+    def __init__(self, absorptivity=0, sigma_xy=0):
+        AbsorptionAccountant.__init__(self, RealReflective_OneSide, absorptivity, sigma_xy)
+
 class RealReflectiveDetector(DirectionAccountant):
-    """A wrapper around AbsorptionAccountant with a RealReflective optics"""
+    """A wrapper around DirectionAccountant with a RealReflective optics"""
     def __init__(self, absorptivity=0, sigma_xy=0):
         DirectionAccountant.__init__(self, RealReflective, absorptivity, sigma_xy)
+
+class RealReflectiveDetector_OneSide(DirectionAccountant):
+    """A wrapper around DirectionAccountant with a RealReflective_OneSide optics"""
+    def __init__(self, absorptivity=0, sigma_xy=0):
+        DirectionAccountant.__init__(self, RealReflective_OneSide, absorptivity, sigma_xy)
         
 class AbsorberReflector(Reflective):
     """
@@ -192,7 +203,6 @@ class AbsorberReflector(Reflective):
         outg.set_energy(energy)
         return outg
 
-# added
 class RealReflective_OneSide(RealReflective):
     """
     Adds directionality to an optics manager that is modelled to represent the
@@ -206,7 +216,6 @@ class RealReflective_OneSide(RealReflective):
         energy[proj > 0] = 0 # projection up - set energy to zero
         outg.set_energy(energy) #substitute previous step into ray energy array
         return outg
-# added end
         
 class RefractiveHomogenous(object):
     """

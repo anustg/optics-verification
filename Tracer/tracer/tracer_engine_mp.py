@@ -7,7 +7,10 @@ from tracer.assembly import *
 
 class TracerEngineMP(TracerEngine):
 	'''
-	Famework for multi-processing using the tracer engine as is.  Inheritance is broken by the multiprocessing pool and rebuilt on the tree and self._asm
+	Famework for multi-processing using the tracer engine as is. 
+	Requires pathos: https://github.com/uqfoundation/pathos
+
+	Inheritance is broken by the multiprocessing pool and rebuilt on the tree and self._asm
 	The original assembly needs to be reallocated after the simulation to be able to get the values stored in the optical managers with previously defined objects.
 
 	Not the cleanest or finest implementation. Could be blended with the original engine and use teh very same api. It works.

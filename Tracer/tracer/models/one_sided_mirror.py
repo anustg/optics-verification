@@ -29,7 +29,7 @@ def surfaces_for_next_iteration(self, rays, surface_id):
     """
     return N.zeros((len(self.surfaces), rays.get_num_rays()), dtype=N.bool)
 
-def rect_one_sided_mirror(width, height, absorptivity=0.):
+def rect_one_sided_mirror(width, height, absorptivity=0., sigma_xy=0.):
     """
     construct an object with two surfaces: one on the XY plane, that is
     specularly reflective, and one slightly below (negative z), that is opaque.
@@ -41,22 +41,22 @@ def rect_one_sided_mirror(width, height, absorptivity=0.):
         not reflected back.
     """
     surf = Surface(RectPlateGM(width, height), 
-        opt.AbsorberReflector(absorptivity))
+        opt.RealReflectiveDetector_OneSide(absorptivity, sigma_xy))
     obj = AssembledObject(surfs=[surf])
     obj.surfaces_for_next_iteration = types.MethodType(
         surfaces_for_next_iteration, obj, obj.__class__)
     return obj
 
 # added
-def rect_para_one_sided_mirror(width, height, focal_length, absorptivity=0.):
+def rect_para_one_sided_mirror(width, height, focal_length, absorptivity=0., sigma_xy=1e-3):
     surf = Surface(RectangularParabolicDishGM(width, height, focal_length),
-                   opt.RealReflective_OneSide(absorptivity, 1e-3))
-    print('generated surface')
+                   opt.RealReflectiveDetector_OneSide(absorptivity, sigma_xy))
+    #print('generated surface')
     obj = AssembledObject(surfs = [surf])
-    print('assembled surface')
+    #print('assembled surface')
     obj.surfaces_for_next_iteration = types.MethodType(
         surfaces_for_next_iteration, obj, obj.__class__)
-    print('set surfaces for next iteration')
+    #print('set surfaces for next iteration')
     return obj
 # added end
 
@@ -80,7 +80,7 @@ def one_sided_receiver(width, height, absorptivity=1.):
     """
     front = Surface(RectPlateGM(width, height), 
         opt.ReflectiveReceiver(absorptivity))
-    back = Surface(RectPlateGM(width, height), opt.Reflective(1.),
+    back = Surface(RectPlateGM(width, height), opt.ReflectiveReceiver(1.),
         location=r_[0., 0., -1e-10])
     obj = AssembledObject(surfs=[front, back])
     obj.surfaces_for_next_iteration = types.MethodType(
