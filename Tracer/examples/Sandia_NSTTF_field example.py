@@ -199,12 +199,13 @@ class TowerScene():
 		e.minener = 1e-10
 		timer_mcrt += time.clock()-mcrt
 		hits_helios=0
+		i=0
 
-		#while hits_helios < 20e6:
-		for i in xrange(iters):
+		while hits_helios < 20e6:
+		#for i in xrange(iters):
 			print ' '
 			print ' '
-			#print 'ITERATION ', i+1, ' of ', iters 
+			print 'ITERATION ', i+1#, ' of ', iters 
 			mcrt = time.clock()
 			# Perform the trace:
 			sources = []
@@ -240,8 +241,8 @@ class TowerScene():
 			#===========================================================================
 			# Detect blockage and look for the parents of the blocked rays. Identify from which heliostats teh oarents come and associate the blockage losses to the heliostats where blockage is suffered.
 			
-			hz = N.ravel(N.nonzero(e.tree.bunds[1].get_vertices()[2] < (self.field._th-self.rec_h/2.)))
-			hits_helios = N.sum(hz)
+			hz = (e.tree._bunds[1].get_vertices()[2]) < (self.field._th-self.rec_h/2.)
+			hits_helios += N.sum(hz)
 			print 'Useful rays:', hits_helios
 			# Get the 3rd bundle (after 2 hits):
 			bund_2 = e.tree._bunds[2].get_vertices()
@@ -321,6 +322,7 @@ class TowerScene():
 			print 'Peak flux (kW/m2):', N.amax(fluxmap)
 			print 'AVG flux (kW/m2): ', N.sum(fluxmap)/(N.shape(fluxmap)[0]*N.shape(fluxmap)[1])
 			print 'Total radiative power (kW): ', N.sum(fluxmap*(11./50.)**2)
+			i+=1
 		
 			#===========================================================================
 			e.tree._bunds = []
