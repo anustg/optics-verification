@@ -437,8 +437,9 @@ class FONaR_RTVF(RTVF):
 				vf_tracer.multi_ray_sim(S, procs = procs)
 				#vf_tracer.ray_tracer(S[0],1,1e-15)
 				self.A = vf_tracer._asm #due to multiprocessing inheritance break
-				view = Renderer(vf_tracer)
-				view.show_rays()
+				if i == 1:
+					view = Renderer(vf_tracer)
+					view.show_rays()
 				self.alloc_VF(i)
 
 			self.p += self.ray_counts
@@ -477,7 +478,7 @@ class FONaR_RTVF(RTVF):
 		# Aperture:
 		self.VF[n,0] = N.sum(Aperture_abs)
 	
-		for i in xrange(N.shape(VF)[0]-1):
+		for i in xrange(N.shape(self.VF)[0]-1):
 			ahr = self.binning_scheme[1+i]
 			# Envelope and absorber:
 			h0 = ahr[1,0]
@@ -488,8 +489,8 @@ class FONaR_RTVF(RTVF):
 			
 			absorber_in_h = N.logical_and(Absorber_hits[2]>h0, Absorber_hits[2]<h1)
 			angles_absorber = N.arctan(Absorber_hits[1]/Absorber_hits[0])
-			angle_absorber[Absorber_hits[0]<0.] = N.pi+angle_absorber[Absorber_hits[0]<0.]
-			angle_absorber[N.logical_and(Absorber_hits[0]<1.,Absorber_hits[0]>0.)] = 2.*N.pi+angle_absorber[N.logical_and(Absorber_hits[0]<1.,Absorber_hits[0]>0.)]
+			angles_absorber[Absorber_hits[0]<0.] = N.pi+angles_absorber[Absorber_hits[0]<0.]
+			angles_absorber[N.logical_and(Absorber_hits[0]<1.,Absorber_hits[0]>0.)] = 2.*N.pi+angles_absorber[N.logical_and(Absorber_hits[0]<1.,Absorber_hits[0]>0.)]
 			absorber_in_ang = N.logical_and(angles_absorber>ang0, angles_absorber<ang1)
 
 			abs_in_bin = N.logical_and(absorber_in_h, absorber_in_ang)
@@ -497,12 +498,12 @@ class FONaR_RTVF(RTVF):
 
 			envelope_in_h = N.logical_and(Envelope_hits[2]>h0, Envelope_hits[2]<h1)
 			angles_envelope = N.arctan(Envelope_hits[1]/Envelope_hits[0])
-			angle_envelope[Envelope_hits[0]<0.] = N.pi+angle_envelope[Envelope_hits[0]<0.]
-			angle_envelope[N.logical_and(Envelope_hits[0]<1.,Envelope_hits[0]>0.)] = 2.*N.pi+angle_envelope[N.logical_and(Envelope_hits[0]<1.,Envelope_hits[0]>0.)]
+			angles_envelope[Envelope_hits[0]<0.] = N.pi+angles_envelope[Envelope_hits[0]<0.]
+			angles_envelope[N.logical_and(Envelope_hits[0]<1.,Envelope_hits[0]>0.)] = 2.*N.pi+angles_envelope[N.logical_and(Envelope_hits[0]<1.,Envelope_hits[0]>0.)]
 			envelope_in_ang = N.logical_and(angles_envelope>ang0, angles_envelope<ang1)
 
 			env_in_bin = N.logical_and(envelope_in_h, envelope_in_ang)
-			env_abs = N.sum(Envelope_abs[abs_in_bin])
+			env_abs = N.sum(Envelope_abs[env_in_bin])
 
 			self.VF[n,1+i] = abs_abs+env_abs
 

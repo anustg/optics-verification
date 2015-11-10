@@ -59,14 +59,12 @@ class TracerEngineMP(TracerEngine):
 
 		# Regroup trees:
 		self.tree = RayTree() # Create a new tree for all
-		#print tree_len
-		print 'trees', trees[0]._bunds[1].get_parents()
+
 		for t in xrange(N.amax(tree_len)): # Browse through general tree levels up to the maximum length that has been raytraced
 			parents_adjust = 0 # a variable to point to the right parents in the general tree.
 			for eng in xrange(len(resm)): # Browse through bundles of each parallel engine.
 				if t>0: # adapt parents indexing prior to concatenation
 					trees[eng]._bunds[t].set_parents(trees[eng]._bunds[t].get_parents()+parents_adjust)
-				#if t<tree_len[eng]: #?
 				if t==len(self.tree._bunds): # if the index is greater than the actual length of the general tree, add a new bundle to the general tree with the present parallel bundle to initialise it.
 					self.tree._bunds.append(trees[eng]._bunds[t])
 				else:	
