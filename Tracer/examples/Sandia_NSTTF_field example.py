@@ -157,13 +157,13 @@ class TowerScene():
 		# dimension of the field.
 
 		#=============
-		render = False
+		render = True
 		#=============
 		
 		sun_vec = solar_vector(self.sun_az*degree, self.sun_elev*degree)
 		
 		# Generate the following number of rays
-		num_rays = 400000.
+		num_rays = 8000.
 		iters = 50
 
 		# Results bins:

@@ -145,7 +145,7 @@ class FiniteFlatGM(FlatGeometryManager):
         # Local should be deleted by children in their find_intersections.
         self._local = N.dot(N.linalg.inv(self._working_frame),
             N.vstack((self._global, N.ones(self._global.shape[1]))))
-        
+
         return ray_prms
         
     def select_rays(self, idxs):
@@ -178,7 +178,7 @@ class RectPlateGM(FiniteFlatGM):
             raise ValueError("Height must be positive")
         
         self._half_dims = N.c_[[width, height]]/2.
-        #print(">", self._half_dims)
+
         FiniteFlatGM.__init__(self)
         
     def find_intersections(self, frame, ray_bundle):

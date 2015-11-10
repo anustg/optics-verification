@@ -138,8 +138,6 @@ class Renderer():
 					c2 = sv[:,ray] + sd[:,ray]*l
 				co += [(c1[0],c1[1],c1[2]), (c2[0],c2[1],c2[2])]
 
-		
-
 		color=(1,1,0.5)
 
 		no1 = coin.SoSeparator()

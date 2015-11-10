@@ -400,6 +400,7 @@ class FONaR_RTVF(RTVF):
 	def __init__(self, Assembly, binning_scheme, areas, num_rays=10000, precision=0.01):
 		RTVF.__init__(self, num_rays, precision)
 		self.binning_scheme = binning_scheme
+		self.areas = areas
 		procs = 8 # number of CPUs to be used
 
 		self.t0=time.clock()
@@ -436,8 +437,8 @@ class FONaR_RTVF(RTVF):
 
 				vf_tracer.multi_ray_sim(S, procs = procs)
 				#vf_tracer.ray_tracer(S[0],1,1e-15)
-				self.A = vf_tracer._asm #due to multiprocessing inheritance break
-				if i == 1:
+				self.A = vf_tracer._asm # due to multiprocessing inheritance break
+				if i == 3:
 					view = Renderer(vf_tracer)
 					view.show_rays()
 				self.alloc_VF(i)
@@ -455,8 +456,7 @@ class FONaR_RTVF(RTVF):
 		return self.VF_esperance
 
 	def gen_source(self, ahr, num_rays, rays_in, procs):
-
-		center = ahr[1,0]
+		center = N.vstack([0,0,ahr[1,0]])
 		if ahr[2,0]==ahr[2,1]:
 			S = vf_cylinder_bundle(num_rays=num_rays, rc=ahr[2,0], lc=ahr[1,1]-ahr[1,0], center=center, direction=N.array([0,0,1]), rays_in=rays_in, procs=procs, angular_span=[ahr[0,0],ahr[0,1]])
 		elif ahr[1,0]==ahr[1,1]:

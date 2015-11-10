@@ -41,7 +41,7 @@ class TracerEngineMP(TracerEngine):
 		for eng in xrange(len(resm)):
 			# Get and regroup results in one tree and assembly only:
 			S = resm[eng]._asm.get_surfaces()
-			tree_len[eng] = int(len(resm[eng].tree._bunds))
+			tree_len[eng] = len(resm[eng].tree._bunds)
 			trees.append(resm[eng].tree)
 			# Next loop is to get the optics callable objects and copy regroup their values without asumptions about what they are.
 			for s in xrange(len(S)):
@@ -59,16 +59,15 @@ class TracerEngineMP(TracerEngine):
 
 		# Regroup trees:
 		self.tree = RayTree() # Create a new tree for all
-
 		for t in xrange(N.amax(tree_len)): # Browse through general tree levels up to the maximum length that has been raytraced
-			parents_adjust = 0 # a variable to point to the right parents in the general tree.
 			for eng in xrange(len(resm)): # Browse through bundles of each parallel engine.
-				if t>0: # adapt parents indexing prior to concatenation
-					trees[eng]._bunds[t].set_parents(trees[eng]._bunds[t].get_parents()+parents_adjust)
-				if t==len(self.tree._bunds): # if the index is greater than the actual length of the general tree, add a new bundle to the general tree with the present parallel bundle to initialise it.
-					self.tree._bunds.append(trees[eng]._bunds[t])
-				else:	
-					self.tree._bunds[t] = concatenate_rays((self.tree._bunds[t], trees[eng]._bunds[t]))
-				if t>0:
-					parents_adjust = len(self.tree._bunds[t].get_parents()) # update the parents index adaptation for next bundles parenst indexing
+				if t<(tree_len[eng]): # to not go over the length of the present parallel tree.
+					if t==len(self.tree._bunds): # if the index is greater than the actual length of the general tree, add a new bundle to the general tree with the present parallel bundle to initialise it.
+						bundt = trees[eng]._bunds[t]
+					else:	
+						if t>0: # adapt parents indexing prior to concatenation
+							trees[eng]._bunds[t].set_parents(trees[eng]._bunds[t].get_parents()+len(self.tree._bunds[t].get_parents()))
+						bundt = concatenate_rays([bundt, trees[eng]._bunds[t]])
+			self.tree.append(bundt)
+		
 		trees = 0
