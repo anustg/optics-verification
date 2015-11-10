@@ -9,11 +9,6 @@ References:
 
 from numpy import random, linalg as LA
 import numpy as N
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
-
-
 from .ray_bundle import RayBundle
 from .spatial_geometry import *
 
@@ -119,7 +114,7 @@ def edge_rays_directions(num_rays, ang_range):
 
     return a
 
-def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=None, radius_in=0.):
+def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=None, radius_in=0., angular_span=[0.,2.*N.pi]):
     """
     Generates a ray bundle emanating from a disk, with each surface element of 
     the disk having the same ray density. The rays all point at directions uniformly 
@@ -152,7 +147,7 @@ def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=No
     # Locations:
     # See [1]
     xi1 = random.uniform(size=num_rays)
-    thetas = random.uniform(high=2.*N.pi, size=num_rays)
+    thetas = random.uniform(low=angular_span[0], high=angular_span[1], size=num_rays)
     rs = N.sqrt(radius_in**2.+xi1*(radius**2.-radius_in**2.))
     xs = rs * N.cos(thetas)
     ys = rs * N.sin(thetas)
@@ -190,7 +185,6 @@ def solar_rect_bundle(num_rays, center, direction, x, y, ang_range, flux=None):
     return rayb
 
 #def bivariate_rect_bundle(num_rays, center, direction, x, y, ang_range_vert, ang_range_hor, flux=None):
-
 
 
 def edge_rays_bundle(num_rays,  center,  direction,  radius, ang_range, flux=None, radius_in=0.):
@@ -337,7 +331,7 @@ def square_bundle(num_rays, center, direction, width):
     rayb.set_directions(directions)
     return rayb
 
-def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, procs=1):
+def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, procs=1, angular_span=[0.,2.*N.pi]):
     '''
     Generate a frustum shaped lambertian source with randomly situated rays to compute view factors. The overall energy of the bundle is 1.
 
@@ -367,7 +361,7 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, 
 
     zs = (-r0+N.sqrt(r0**2.+R*(r1**2.-r0**2.)))/c
 
-    phi_s = 2.*N.pi*random.uniform(size=num_rays)
+    phi_s = random.uniform(low=angular_span[0], high=angular_span[1], size=num_rays)
     rs = r0+c*zs
     xs = rs * N.cos(phi_s)
     ys = rs * N.sin(phi_s)
@@ -394,7 +388,7 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, 
 
     return rayb
 
-def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True, procs=1):
+def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True, procs=1, angular_span=[0.,2.*N.pi]):
     '''
     Generate a cylinder shaped lambertian source with randomly situated rays to compute view factors. The overall energy of the bundle is 1.
 
@@ -416,7 +410,7 @@ def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True, procs=
 
     zs = lc*random.uniform(size=num_rays)
 
-    phi_s = 2.*N.pi*random.uniform(size=num_rays)
+    phi_s = random.uniform(low=angular_span[0], high=angular_span[1], size=num_rays)
 
     xs = rc * N.cos(phi_s)
     ys = rc * N.sin(phi_s)

@@ -265,6 +265,7 @@ class TwoNparamcav(Assembly):
 
 		# Evaluate pressure drop per tube/sections
 		tube_lengths = N.array(self.areas[active]/tube_diameters_out)
+		self.tube_lengths = tube_lengths
 		ps = [p_in]
 		ps.append(p_in+(p_out-p_in)/N.sum(tube_lengths)*N.add.accumulate(tube_lengths))
 		ps = N.hstack(ps)
@@ -359,14 +360,7 @@ class TwoNparamcav(Assembly):
 		- passive: array of the indices of the adiabatic surfaces in the cavity.
 
 		Returns:
-		- An array including: the 2N parameters in (m), flux input and losses breakdown in (W).
-		The hits and absorbed energy are stored in the following variables:
-			- self.Frusta_hits, self.Frusta_abs: location and value of the absorbed energy at this location on the frusta.
-			- self.Cone_hits, self.Cone_abs: location and value of the absorbed energy at this location on the cone.
-		The method also stores the temperatures and net emitted radiative flux and net radiative powers in the thermal wavelength region (semi-gray body assumption):
-			- self.q: Net thermal radiative flux (W/m2) per element.
-			- self.Q: Net thermal radiative power (W) per element.
-			- self.T: Temeprature of each element (K).
+		The temperature of the elements, an array of zeros if the candidates are net energy destructors.
 		'''
 
 		# Iterate to find wall temperatures and respect the energy balance:

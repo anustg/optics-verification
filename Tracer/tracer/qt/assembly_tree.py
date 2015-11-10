@@ -1,4 +1,3 @@
-
 from PyQt4 import QtCore, QtGui
 
 class AssemblyTreeItem(QtGui.QTreeWidgetItem):
@@ -149,7 +148,7 @@ class AssemblyTree(QtGui.QTreeWidget):
             obj._tree_tags = {}
         
         obj._tree_tags[tagname] = value
-
+'''
 if __name__ == "__main__":
     import sys
     from tracer.models.tau_minidish import standard_minidish
@@ -168,3 +167,4 @@ if __name__ == "__main__":
     ui.show()
     
     sys.exit(app.exec_())
+'''

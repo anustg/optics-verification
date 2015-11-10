@@ -69,7 +69,6 @@ class Paraboloid(QuadricGM):
         return A, B, C
 
 
-import math
 class ParabolicDishGM(Paraboloid):
     """
     A paraboloid that marks rays outside its diameter as missing. The
@@ -83,7 +82,7 @@ class ParabolicDishGM(Paraboloid):
             with a plane parallel to the xy plane.
         focal_length - distance of the focal point from the origin.
         """
-        par_param = 2*math.sqrt(focal_length) # [2]
+        par_param = 2.*N.sqrt(focal_length) # [2]
         Paraboloid.__init__(self, par_param, par_param)
         self._R = float(diameter/2.) # For the mesh
         self._h = float((diameter/2./par_param)**2)
@@ -136,18 +135,18 @@ class ParabolicDishGM(Paraboloid):
         """
         if resolution is None:
             #resolution = 2*N.pi*self._R / 40
-            resolution = 40
+            resolution = 40.
         # Generate a circular-edge mesh using polar coordinates.
-        r_end = self._R + 1./100./resolution
-        rs = N.r_[0:r_end:resolution] # previously 1./resolution; error
+        r_end = self._R*(1.+1./resolution)
+        rs = N.r_[0:r_end:self._R/resolution]
         # Make the circumferential points at the requested resolution.
-        ang_end = 2*N.pi + 1./(self._R*resolution)
-        angs = N.r_[0:ang_end:1./(self._R*resolution)]
+        ang_end = 2*N.pi*(1.+1./(self._R*resolution))
+        angs = N.r_[0:ang_end:2*N.pi/(self._R*resolution)]
 
         x = N.outer(rs, N.cos(angs))
         y = N.outer(rs, N.sin(angs))
         z = self.a*x**2 + self.b*y**2
-        
+
         return x, y, z
 
 class HexagonalParabolicDishGM(Paraboloid):
@@ -215,41 +214,6 @@ class RectangularParabolicDishGM(Paraboloid):
         #self._R = float(math.sqrt((width/2)**2 + (height/2)**2))
         self._w, self._h = width/2., height/2.
 
-
-    def _select_coords(self, coords, prm):
-        """
-        Choose between two intersection points on a quadric surface.
-        This implementation extends QuadricGM's behaviour by not choosing
-        intersections outside the rectangular aperture.
-        
-        Arguments:
-        coords - a 2 by 3 by n array whose each column is the global coordinates
-            of one intersection point of a ray with the sphere.
-        prm - the corresponding parametric location on the ray where the
-            intersection occurs.
-
-        Returns:
-        The index of the selected intersection, or None if neither will do.
-        """
-        select = QuadricGM._select_coords(self, coords, prm)
-
-        coords = N.concatenate((coords, N.ones((2,1,coords.shape[2]))), axis = 1)
-        # assumed no additional parameters to coords, axis = 1
-        #local = N.sum(N.linalg.inv(self._working_frame)[None,:2,:,None]*coords, axis=1)
-        local = N.sum(N.linalg.inv(self._working_frame)[None,:2,:,None] * \
-            coords[:,None,:,:], axis=2)
-
-        abs_x = abs(local[:,0,:])
-        abs_y = abs(local[:,1,:])
-        outside = abs_x > self._w
-        outside |= abs_y > self._h
-        inside = (~outside) & (prm > 1e-9)
-
-        select[~N.logical_or(*inside)] = N.nan
-        one_hit = N.logical_xor(*inside)
-        select[one_hit] = N.nonzero(inside.T[one_hit,:])[1]
-
-        return select
 
     def _select_coords(self, coords, prm):
         """

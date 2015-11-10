@@ -68,7 +68,6 @@ class Renderer():
 		"""
 		Method to draw the geometry of the scene to a Coin3D scenegraph.
 		"""
-		print self.sim._asm._assemblies
 		self.r.addChild(self.sim._asm.get_scene_graph(resolution))
 		win = SoGui.init()
 		viewer = SoGuiExaminerViewer(win)
@@ -80,7 +79,7 @@ class Renderer():
 
 		SoGui.mainLoop()
 
-	def show_rays(self, escaping_len=0.5, max_rays=None, resolution=None):
+	def show_rays(self, escaping_len=0.2, max_rays=None, resolution=None):
 		"""
 		Method to draw the rays to a Coin3D scenegraph. Needs to be called after a raytrace has been peroformed.
 		"""
@@ -117,8 +116,7 @@ class Renderer():
 				if max_rays != None:
 					in_max_rays = parents[:] <= max_rays					
 					parents = N.argwhere(in_max_rays)
-					print parents
-
+	
 		    # loop through individual rays in this bundle
 			for ray in xrange(rays):
 				if se[ray] <= self.sim.minener:
@@ -139,6 +137,8 @@ class Renderer():
 					c1 = sv[:,ray]
 					c2 = sv[:,ray] + sd[:,ray]*l
 				co += [(c1[0],c1[1],c1[2]), (c2[0],c2[1],c2[2])]
+
+		
 
 		color=(1,1,0.5)
 

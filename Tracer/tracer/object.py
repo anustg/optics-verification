@@ -12,7 +12,7 @@ class AssembledObject(Assembly):
     The object also tracks refractive indices as a ray bundle leaves or enters a new
     material.
     """
-    def __init__(self, surfs=None, bounds=None,transform=None):
+    def __init__(self, surfs=None, bounds=None, transform=None):
         """
         Attributes:
         surfaces - a list of Surface objects
