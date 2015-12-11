@@ -28,6 +28,9 @@ class Reflective(object):
             parents=selector)
         return outg
 
+    def reset(self):
+        pass
+
 class RealReflective(object):
     '''
     Generates a function that represents the optics of an opaque absorptive surface with specular reflections and realistic surface slope error. The surface slope error is considered equal in both x and y directions. The consequent distribution of standard deviation is described by a radial bivariate normal distribution law.
@@ -61,6 +64,9 @@ class RealReflective(object):
             energy = rays.get_energy()[selector]*(1 - self._abs),
             parents = selector)
         return outg
+
+    def reset(self):
+        pass
 
 class AbsorptionAccountant(object):
     """

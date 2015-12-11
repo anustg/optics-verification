@@ -80,7 +80,7 @@ class TracerEngine():
         
         return stack, owned_rays
 
-    def ray_tracer(self, bundle, reps, min_energy, tree=True):
+    def ray_tracer(self, bundle, reps=100, min_energy=1e-10, tree=True):
         """
         Creates a ray bundle or uses a reflected ray bundle, and intersects it
         with all objects, uses intersect_ray(). Based on the intersections,
@@ -104,6 +104,8 @@ class TracerEngine():
         NB: the order of the rays within the arrays may change, but they are tracked
         by the ray tree
         """
+        self.reps = reps
+        self.minener = min_energy
         self.tree = RayTree()
         bund = bundle
         if tree is True:

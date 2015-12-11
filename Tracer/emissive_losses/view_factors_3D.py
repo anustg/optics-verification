@@ -11,7 +11,8 @@ from tracer.object import *
 from tracer.spatial_geometry import *
 from tracer.sources import *
 from tracer.tracer_engine_mp import *
-from tracer.CoIn_rendering.rendering import *
+#from tracer.CoIn_rendering.rendering import *
+#import matplotlib.pyplot as plt
 
 import time
 
@@ -44,6 +45,7 @@ class RTVF():
 		2. The combination rule; taking as arbitrary average 0 in the standard deviation formula.
 		Afterwards both standard deviation matrices are tested on the maximum self.precision value and the result is inserted in the progress matrix used in the while loop for each geometry. This progress matrix shuts off the raytrace on elements that already hit their precision target in order to speed up teh calculation. A minimum number of iterations is set in order to avoid unlucky breacks at the start of the routine due to statistical bias on low number of passes.
 		'''
+
 		old_VF_esperance = self.VF_esperance
 		self.VF_esperance = (self.VF_esperance*N.sum(self.p-self.ray_counts)+self.VF*N.sum(self.ray_counts))/N.sum(self.p)
 		self.Qsum = self.Qsum + N.vstack(self.p-self.ray_counts)/self.p*(self.VF_esperance-old_VF_esperance)**2.
@@ -74,13 +76,14 @@ class RTVF():
 		plt.figure()
 		for i in xrange(len(self.stdev_store_reciprocity)):
 			plt.scatter(N.ones((len(self.stdev_store_reciprocity[i]),len(self.stdev_store_reciprocity[i])))*(i+1), self.stdev_store_reciprocity[i], marker='+')
-		plt.savefig(open('/home/charles/Documents/Tracer/Reciprocity_convergence_plot.png', 'w'))
+		plt.savefig(open('/home/charles/Documents/Boulot/ASTRI/FONaR/Reciprocity_VF_convergence_plot.png', 'w'))
 		plt.figure()
 		for i in xrange(len(self.stdev_store_VF)):
 			plt.scatter(N.ones((len(self.stdev_store_VF[i]),len(self.stdev_store_VF[i])))*(i+1), self.stdev_store_VF[i], marker='+', zorder=1000)
+		plt.ylim(ymin=0,ymax=N.amax(self.stdev_store_VF[i]))
 			#plt.scatter(N.ones((len(self.stdev_store_VF[i]),len(self.stdev_store_VF[i])))*(i+1), self.VF_esperance_store[i]/3.*self.precision, marker='*')
 			
-		plt.savefig(open('/home/charles/Documents/Tracer/VF_convergence_plot.png', 'w'))
+		plt.savefig(open('/home/charles/Documents/Boulot/ASTRI/FONaR/VF_convergence_plot.png', 'w'))
 		plt.close("all")
 		#print (self.progress==True).any(axis=1)
 		#self.ray_counts = self.progress*self.num_rays
@@ -403,7 +406,7 @@ class FONaR_RTVF(RTVF):
 		self.areas = areas
 		procs = 8 # number of CPUs to be used
 
-		self.t0=time.clock()
+		self.t0 = time.clock()
 
 		self.VF = N.zeros((N.shape(binning_scheme)[0], N.shape(binning_scheme)[0]))
 		self.progress = N.ones(N.shape(self.VF), dtype=N.bool)
@@ -421,7 +424,7 @@ class FONaR_RTVF(RTVF):
 		vf_tracer = TracerEngineMP(Assembly)
 		vf_tracer.itmax = 1 # stop iteration after this many ray bundles were generated (i.e. after the original rays intersected some surface this many times).
 		vf_tracer.minener = 1e-15 # minimum energy threshold
-
+		stable_stats = 0
 		while (self.progress==True).any() or stable_stats<3:
 
 			tp = time.clock()
@@ -438,9 +441,9 @@ class FONaR_RTVF(RTVF):
 				vf_tracer.multi_ray_sim(S, procs = procs)
 				#vf_tracer.ray_tracer(S[0],1,1e-15)
 				self.A = vf_tracer._asm # due to multiprocessing inheritance break
-				if i == 3:
-					view = Renderer(vf_tracer)
-					view.show_rays()
+				#if i == 2:
+				#	view = Renderer(vf_tracer)
+				#	view.show_rays()
 				self.alloc_VF(i)
 
 			self.p += self.ray_counts
@@ -453,7 +456,6 @@ class FONaR_RTVF(RTVF):
 		t1=time.clock()-self.t0
 		print '	VF calculation time:',t1,'s'
 
-		return self.VF_esperance
 
 	def gen_source(self, ahr, num_rays, rays_in, procs):
 		center = N.vstack([0,0,ahr[1,0]])
@@ -463,7 +465,6 @@ class FONaR_RTVF(RTVF):
 			S = solar_disk_bundle(num_rays=num_rays, center=center, direction=N.array([0,0,1]), radius=ahr[2,1], ang_range=N.pi/2., flux=1./(N.pi*N.abs(ahr[2,1]**2-ahr[2,0]**2)/procs), radius_in=ahr[2,0], angular_span=[ahr[0,0],ahr[0,1]])
 		else:
 			S = vf_frustum_bundle(num_rays=num_rays, r0=ahr[2,0], r1=ahr[2,1], depth=ahr[1,1]-ahr[1,0], center=center, direction=N.array([0,0,1]), rays_in=rays_in, procs=procs, angular_span=[ahr[0,0],ahr[0,1]])
-		
 		return S
 
 	def alloc_VF(self, n):
@@ -477,7 +478,7 @@ class FONaR_RTVF(RTVF):
 		Absorber_abs, Absorber_hits = ABS.get_surfaces()[0].get_optics_manager().get_all_hits()
 		# Aperture:
 		self.VF[n,0] = N.sum(Aperture_abs)
-	
+
 		for i in xrange(N.shape(self.VF)[0]-1):
 			ahr = self.binning_scheme[1+i]
 			# Envelope and absorber:
@@ -487,10 +488,10 @@ class FONaR_RTVF(RTVF):
 			ang1 = ahr[0,1]
 			# comment: a test on radii could be added for more complex geometries
 			
-			absorber_in_h = N.logical_and(Absorber_hits[2]>h0, Absorber_hits[2]<h1)
+			absorber_in_h = N.logical_and(Absorber_hits[2]>=h0, Absorber_hits[2]<h1)
 			angles_absorber = N.arctan(Absorber_hits[1]/Absorber_hits[0])
 			angles_absorber[Absorber_hits[0]<0.] = N.pi+angles_absorber[Absorber_hits[0]<0.]
-			angles_absorber[N.logical_and(Absorber_hits[0]<1.,Absorber_hits[0]>0.)] = 2.*N.pi+angles_absorber[N.logical_and(Absorber_hits[0]<1.,Absorber_hits[0]>0.)]
+			angles_absorber[N.logical_and(Absorber_hits[0]>0.,Absorber_hits[1]<0.)] = 2.*N.pi+angles_absorber[N.logical_and(Absorber_hits[0]>0.,Absorber_hits[1]<0.)]
 			absorber_in_ang = N.logical_and(angles_absorber>ang0, angles_absorber<ang1)
 
 			abs_in_bin = N.logical_and(absorber_in_h, absorber_in_ang)
@@ -499,7 +500,7 @@ class FONaR_RTVF(RTVF):
 			envelope_in_h = N.logical_and(Envelope_hits[2]>h0, Envelope_hits[2]<h1)
 			angles_envelope = N.arctan(Envelope_hits[1]/Envelope_hits[0])
 			angles_envelope[Envelope_hits[0]<0.] = N.pi+angles_envelope[Envelope_hits[0]<0.]
-			angles_envelope[N.logical_and(Envelope_hits[0]<1.,Envelope_hits[0]>0.)] = 2.*N.pi+angles_envelope[N.logical_and(Envelope_hits[0]<1.,Envelope_hits[0]>0.)]
+			angles_envelope[N.logical_and(Envelope_hits[0]>0.,Envelope_hits[1]<0.)] = 2.*N.pi+angles_envelope[N.logical_and(Envelope_hits[0]>0.,Envelope_hits[1]<0.)]
 			envelope_in_ang = N.logical_and(angles_envelope>ang0, angles_envelope<ang1)
 
 			env_in_bin = N.logical_and(envelope_in_h, envelope_in_ang)

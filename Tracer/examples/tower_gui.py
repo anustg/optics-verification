@@ -40,8 +40,7 @@ class TowerScene(TracerScene):
     
     def __init__(self):
         self.gen_plant()
-        TracerScene.__init__(self, self.plant, self.gen_rays())
-        
+        TracerScene.__init__(self, self.plant, self.gen_rays())      
         self.aim_field()
         self.set_background((0., 0.5, 1.))
     
@@ -56,11 +55,11 @@ class TowerScene(TracerScene):
     def gen_plant(self):
         xy = radial_stagger(-N.pi/4, N.pi/4 + 0.0001, self.ang_res, 5, 20, self.radial_res)
         self.pos = N.hstack((xy, N.zeros((xy.shape[0], 1))))
-        self.field = HeliostatField(self.pos, 0.5, 0.5, 0, 10)
+        self.field = HeliostatField(self.pos, 1.5, 0.5, 0, 10.)
 
         self.rec, recobj = one_sided_receiver(1., 1.)
-        rec_trans = roty(N.pi/2)
-        rec_trans[2,3] = 10
+        rec_trans = roty(N.pi/2.)
+        rec_trans[2,3] = 10.
         recobj.set_transform(rec_trans)
 
         self.plant = Assembly(objects=[recobj], subassemblies=[self.field])
@@ -105,7 +104,7 @@ class TowerScene(TracerScene):
         # Perform the trace:
         self.rec.get_optics_manager().reset()
         e = TracerEngine(self.plant)
-        e.ray_tracer(rays, 1000, 0.05)
+        e.ray_tracer(rays)
         
         # Show a histogram of hits:
         energy, pts = self.rec.get_optics_manager().get_all_hits()

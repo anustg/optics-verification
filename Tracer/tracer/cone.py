@@ -109,7 +109,7 @@ class FiniteCone(InfiniteCone):
         
         # Check the valid hitting points:
         inside = (height >= 0) & (height <= self.h)
-        positive = prm > 1e-14 # to account for flating point precision issues.
+        positive = prm > 1e-10 # to account for flating point precision issues.
 
         # Choses between the two intersections offered by the surface.
         hitting = inside & positive
@@ -203,7 +203,7 @@ class ConicalFrustum(InfiniteCone):
         # Checks if the local_z-projected hit coords are in the actual height of the furstum
         # and if the parameter is positive so that the ray goes ahead.
         inside = (self.z1 <= height) & (height <= self.z2)
-        positive = prm > 1e-14
+        positive = prm > 1e-10
         hitting = inside & positive
 
         # Choses between the two intersections offered by the surface.

@@ -356,7 +356,7 @@ class TowerScene():
 		plt.figure(dpi=1000)
 		# Flux map configuration
 		plt.imshow(fluxmap, extent=extent, vmax=170.)
-		plt.colorbar()
+		plt.colorbar().set_label('Flux (kW)')
 		plt.xlabel('x (m)')
 		plt.ylabel('y (m)')
 		plt.title('%s rays'%((i+1)*num_rays))
@@ -364,8 +364,9 @@ class TowerScene():
 
 		plt.close('all')
 
-scene = TowerScene()
-hstat_az, hstat_elev = scene.aim_field()
-scene.calculate_area(hstat_az, hstat_elev)
-scene.trace()
+if __name__ == '__main__':
+	scene = TowerScene()
+	hstat_az, hstat_elev = scene.aim_field()
+	scene.calculate_area(hstat_az, hstat_elev)
+	scene.trace()
 

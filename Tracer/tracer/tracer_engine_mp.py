@@ -18,21 +18,26 @@ class TracerEngineMP(TracerEngine):
 
 	def trace(self, source):
 		# Raytrace in a separate method to be called by the ProcessingPool.map() method.
-		self.ray_tracer(source, self.itmax, self.minener, tree=True)
+		self.ray_tracer(source, self.reps, self.minener, tree=True)
 		# Returns the tracer_engine instance traced.
 		return self
 
 	def multi_ray_sim(self, sources, procs=8):
 		self.minener = 1e-10 # minimum energy threshold
-		self.itmax = 1000 # stop iteration after this many ray bundles were generated (i.e. 
+		self.reps = 1000 # stop iteration after this many ray bundles were generated (i.e. 
 					# after the original rays intersected some surface this many times).
 		# The multiprocessing raytracing method to call from the original engine.
 		if len(sources) != procs:
 			raise Exception('Number of sources and processors do not agree')
 
 		# Creates a pool of processes and makes them raytrace one different source each. The resm list returned is a list of copies of the original engine post raytrace.
+		timetrace = time.clock()
 		pool = Pool(processes=procs)
 		resm = pool.map(self.trace, sources)
+		timetrace = time.clock() - timetrace
+		print 'Raytrace time: ', timetrace,'s'
+
+		timepost = time.clock()
 
 		# New tree container and length envaluation to redimension it.
 		tree_len = N.zeros(len(resm), dtype=N.int)
@@ -44,18 +49,10 @@ class TracerEngineMP(TracerEngine):
 			tree_len[eng] = len(resm[eng].tree._bunds)
 			trees.append(resm[eng].tree)
 			# Next loop is to get the optics callable objects and copy regroup their values without asumptions about what they are.
+			general_surfaces = self._asm.get_surfaces()
 			for s in xrange(len(S)):
-				part_res = S[s]._opt.__dict__
-				keys = S[s]._opt.__dict__.keys()
-				for k in xrange(len(keys)):
-					if (keys[k] == '_opt') or (keys[k] == '_abs'):
-						continue
-					if len(self._asm.get_surfaces()[s]._opt.__dict__[keys[k]]) < 1:
-						self._asm.get_surfaces()[s]._opt.__dict__[keys[k]] = part_res[keys[k]]
-					elif len(part_res[keys[k]]) < 1:
-						continue
-					else:
-						self._asm.get_surfaces()[s]._opt.__dict__[keys[k]][0] = N.append(self._asm.get_surfaces()[s]._opt.__dict__[keys[k]][0], part_res[keys[k]][0], axis=1)
+				general_surfaces[s]._opt.__dict__.update(S[s]._opt.__dict__)
+
 
 		# Regroup trees:
 		self.tree = RayTree() # Create a new tree for all
@@ -70,4 +67,6 @@ class TracerEngineMP(TracerEngine):
 						bundt = concatenate_rays([bundt, trees[eng]._bunds[t]])
 			self.tree.append(bundt)
 		
-		trees = 0
+		del trees
+		timepost2 = time.clock()-timepost
+		print 'Post processing reassociation time: ', timepost2,'s'

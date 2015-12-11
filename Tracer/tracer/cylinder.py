@@ -112,7 +112,7 @@ class FiniteCylinder(InfiniteCylinder):
         if resolution is None:
             angres = 2*N.pi / 40
         else:
-            angres = 2*N.pi * (resolution / (2.*N.pi*self._R))
+            angres = 2*N.pi / resolution 
 
         # note: current mesh has no detail in the axial direction, just start/end points -- JP
         h = N.r_[[-self._half_h, self._half_h]]

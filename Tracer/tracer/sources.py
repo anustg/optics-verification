@@ -172,7 +172,7 @@ def solar_rect_bundle(num_rays, center, direction, x, y, ang_range, flux=None):
     xs = random.uniform(low=-x/2., high=x/2., size=num_rays)
     ys = random.uniform(low=-y/2., high=y/2., size=num_rays)
 
-    if direction == [0,0,-1]:
+    if (direction == N.array([0,0,-1])).all():
         xs, ys = ys, xs
 
     # Rotate locations to the plane defined by <direction>:

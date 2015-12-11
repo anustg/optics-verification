@@ -188,7 +188,7 @@ class TwoNparamcav(Assembly):
 			else:
 				r1 = self.frustaRadii[i-1]
 			r2 = self.frustaRadii[i]
-			# Adjust the hits detector position to take into account the placement of the receicer in comparision with the focal plane.
+			# Adjust the hits detector position to take into account the placement of the receiver in comparision with the focal plane.
 			z1 += self.aperture_position
 			z2 += self.aperture_position
 			if self.frustaDepths[i]<0.:
@@ -281,14 +281,15 @@ class TwoNparamcav(Assembly):
 		emissions_active[active] = emissions_guess[active]
 		self.m = N.sum(active_abs[active]+emissions_guess[active])/(h_out-h_in)
 
+		# Evlauate the enthalpies
+		for i in xrange(1,len(hs)):
+			hs[i] = hs[i-1]+(active_abs[i]+emissions_active[i])/self.m
+
+		self.h = hs
 
 		#FIXME: need a more reliable convergence insurance
 		if self.m < 0.01:
 			return 'bad_geom'
-
-		# Evlauate the enthalpies
-		for i in xrange(1,len(hs)):
-			hs[i] = hs[i-1]+(active_abs[i]+emissions_active[i])/self.m
 
 		# Get temperatures from enthalpies via Freesteam
 		self.T_guess_fluid = N.zeros(len(self.areas))
@@ -375,7 +376,7 @@ class TwoNparamcav(Assembly):
 
 			if result_T_guess == 'bad_geom': # discard 'bad_geom' geometries.
 
-				self.T_guess = N.zeros(len(self.areas))
+				self.T_guess = N.ones(len(self.areas))*Trec_in
 				break
 
 			self.emi_sim(Tamb, self.T_guess, VF=self.VF, areas=self.areas, inc_radiation=self.rad_passive)

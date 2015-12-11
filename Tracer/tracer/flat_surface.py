@@ -47,7 +47,7 @@ class FlatGeometryManager(GeometryManager):
         
         # Takes into account a negative depth
         # Note that only the 3rd row of params is relevant here!
-        negative = params < 1e-10
+        negative = params < 0.
         params[negative] = N.Inf
         
         self._params = params

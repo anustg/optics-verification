@@ -64,7 +64,7 @@ class Renderer():
 		    self.r.addChild(ls)
 
 
-	def show_geom(self,resolution=None):
+	def show_geom(self, resolution=None):
 		"""
 		Method to draw the geometry of the scene to a Coin3D scenegraph.
 		"""
@@ -83,6 +83,7 @@ class Renderer():
 		"""
 		Method to draw the rays to a Coin3D scenegraph. Needs to be called after a raytrace has been peroformed.
 		"""
+
 		tree = self.sim.tree
 		no = coin.SoSeparator()
 		
