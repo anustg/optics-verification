@@ -17,7 +17,7 @@ from .one_sided_mirror import rect_one_sided_mirror, rect_para_one_sided_mirror
 from ..spatial_geometry import rotx, roty, rotz
 
 class HeliostatField(Assembly):
-	def __init__(self, positions, width, height, absorptivity, aim_height, sigma_xy=None, focal_lengths=None):
+	def __init__(self, positions, width, height, absorptivity, aim_height, sigma_xy=None, focal_lengths=None, option='fast'):
 		"""
 		Generates a field of heliostats, each being a rectangular one-sided
 		mirror, initially pointing downward - for safety reasons, of course :)
@@ -36,13 +36,13 @@ class HeliostatField(Assembly):
 		tower_ht = N.array([0,0,self._th])
 		
 		self._heliostats = []
-		for pos in positions:
-			hstat_pos = N.array(pos)
+		for pos in xrange(len(positions)):
+			hstat_pos = N.array(positions[pos])
 			#focal_length = N.linalg.norm(tower_ht - hstat_pos)
 			if focal_lengths != None:
-				hstat = rect_para_one_sided_mirror(width, height, focal_length, absorpt, sigma_xy, option='fast')
+				hstat = rect_para_one_sided_mirror(width, height, focal_lengths[pos], absorptivity, sigma_xy, option)
 			else:
-				hstat = rect_one_sided_mirror(width, height, absorptivity, sigma_xy, option='fast')
+				hstat = rect_one_sided_mirror(width, height, absorptivity, sigma_xy, option)
 			trans = face_down.copy()
 			trans[:3,3] = pos
 			hstat.set_transform(trans)

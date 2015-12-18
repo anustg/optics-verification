@@ -60,7 +60,7 @@ class TowerScene():
 
 	def gen_rays(self, num_rays, flux=1000.):
 		#========================
-		individual_source = False
+		individual_source = True
 		#========================
 
 		if individual_source:
@@ -96,7 +96,7 @@ class TowerScene():
 
 		# set heliostat field characteristics: 6.09m*6.09m, abs = 0, aim_h = 61
 		self.pos[:,1] = self.pos[:,1]-4. # correct6ion for the true position of the plate on the tower.
-		self.field = HeliostatField(self.pos, 6.09, 6.09, absorptivity=0.04, aim_height=60,  sigma_xy=1e-3)
+		self.field = HeliostatField(self.pos, 6.09, 6.09, absorptivity=0.04, aim_height=60,  sigma_xy=1e-3, option=None)
 		self.rec_w = 11
 		self.rec_h = 11
 		self.rec, recobj = one_sided_receiver(self.rec_w, self.rec_h)
@@ -157,14 +157,14 @@ class TowerScene():
 		# dimension of the field.
 
 		#=============
-		render = True
+		render = False
 		#=============
 		
 		sun_vec = solar_vector(self.sun_az*degree, self.sun_elev*degree)
 		
 		# Generate the following number of rays
-		num_rays = 8000.
-		iters = 50
+		num_rays = 500000.
+		iters = 40
 
 		# Results bins:
 		incoming = N.zeros(len(self.pos))
@@ -199,8 +199,8 @@ class TowerScene():
 		hits_helios=0
 		i=0
 
-		while hits_helios < 20e6:
-		#for i in xrange(iters):
+		#while hits_helios < 20e6:
+		for i in xrange(iters):
 			print ' '
 			print ' '
 			print 'ITERATION ', i+1#, ' of ', iters 
@@ -209,7 +209,7 @@ class TowerScene():
 			sources = []
 			self.flux = 1000.
 			for s in xrange(procs):
-				sources.append(self.gen_rays(num_rays/procs, flux=self.flux/procs))
+				sources.append(self.gen_rays(num_rays/float(procs), flux=self.flux/float(procs)))
 			e.multi_ray_sim(sources, procs)
 			self.plant = e._asm
 			self.field._heliostats = self.plant._assemblies[0].get_surfaces()
@@ -232,7 +232,7 @@ class TowerScene():
 			H, xbins, ybins = N.histogram2d(x, y, bins, weights=en)
 			extent = [ybins[0], ybins[-1], xbins[-1], xbins[0]]
 
-			fluxmap = (fluxmap*i+H/(1000.*(11./50.)**2))/(i+1)
+			fluxmap = (fluxmap*float(i)+H/(1000.*dl**2.))/(i+1.)
 			#===========================================================================
 		
 			# BLOCKAGE and SHADING
@@ -320,6 +320,7 @@ class TowerScene():
 			print 'Peak flux (kW/m2):', N.amax(fluxmap)
 			print 'AVG flux (kW/m2): ', N.sum(fluxmap)/(N.shape(fluxmap)[0]*N.shape(fluxmap)[1])
 			print 'Total radiative power (kW): ', N.sum(fluxmap*(11./50.)**2)
+
 			i+=1
 		
 			#===========================================================================
@@ -327,7 +328,7 @@ class TowerScene():
 			for clear in xrange(len(e._asm.get_surfaces())):
 				e._asm.get_surfaces()[clear].get_optics_manager().reset()
 			#===========================================================================
-
+		'''
 		plt.figure(figsize=(6,8), dpi=1000)
 		plt.suptitle('%s rays'%int((i+1)*num_rays))
 
@@ -350,7 +351,7 @@ class TowerScene():
 		plt.scatter(x=self.pos[:,0], y=self.pos[:,1], s=10, c=incoming/1000., marker='s', linewidths=0, zorder=1000)
 		plt.colorbar()
 		plt.scatter(x=self.pos[:,0], y=self.pos[:,1], c=3.*incoming_stdev/1000., s=40, marker='s', linewidths=0, cmap=plt.cm.gray)
-		plt.colorbar()
+		plt.colorbar().set_label('Flux (kW)')
 		plt.savefig(open('/home/charles/Documents/Boulot/These/Heliostat field/heliostats_losses.png', 'w'), dpi=1000)
 
 		plt.figure(dpi=1000)
@@ -363,10 +364,13 @@ class TowerScene():
 		plt.savefig(open('/home/charles/Documents/Boulot/These/Heliostat field/receiver_fluxmap.png', 'w'))
 
 		plt.close('all')
-
+		'''
 if __name__ == '__main__':
 	scene = TowerScene()
 	hstat_az, hstat_elev = scene.aim_field()
 	scene.calculate_area(hstat_az, hstat_elev)
+	total_time = time.time()
 	scene.trace()
+	total_time = time.time()-total_time
+	print 'Simulation total time: ', total_time/60., 'min'
 

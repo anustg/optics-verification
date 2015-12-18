@@ -52,7 +52,7 @@ def rect_one_sided_mirror(width, height, absorptivity=0., sigma_xy=0., option=No
 		surfaces_for_next_iteration, obj, obj.__class__)
 	return obj
 
-def rect_para_one_sided_mirror(width, height, focal_length, absorptivity=0., sigma_xy=1e-3, option=None):
+def rect_para_one_sided_mirror(width, height, focal_length, absorptivity=0., sigma_xy=1e-3, option=None, location=None, rotation=None):
 	if option == 'fast':
 		surf = Surface(RectangularParabolicDishGM(width, height, focal_length),
 				   opt.RealReflective_OneSide(absorptivity, sigma_xy), location=location, rotation=rotation)

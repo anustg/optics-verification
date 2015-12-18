@@ -4,6 +4,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 from tracer.sources import *
 from tracer.tracer_engine import *
 from tracer.assembly import *
+from copy import copy
 
 class TracerEngineMP(TracerEngine):
 	'''
@@ -34,39 +35,50 @@ class TracerEngineMP(TracerEngine):
 		timetrace = time.clock()
 		pool = Pool(processes=procs)
 		resm = pool.map(self.trace, sources)
+
 		timetrace = time.clock() - timetrace
 		print 'Raytrace time: ', timetrace,'s'
 
 		timepost = time.clock()
 
-		# New tree container and length envaluation to redimension it.
-		tree_len = N.zeros(len(resm), dtype=N.int)
-		trees = []
-
+		# New general tree:
 		for eng in xrange(len(resm)):
 			# Get and regroup results in one tree and assembly only:
-			S = resm[eng]._asm.get_surfaces()
-			tree_len[eng] = len(resm[eng].tree._bunds)
-			trees.append(resm[eng].tree)
-			# Next loop is to get the optics callable objects and copy regroup their values without asumptions about what they are.
-			general_surfaces = self._asm.get_surfaces()
-			for s in xrange(len(S)):
-				general_surfaces[s]._opt.__dict__.update(S[s]._opt.__dict__)
+			if eng == 0 :
+				self.tree =  resm[eng].tree
+				self._asm = resm[eng]._asm
+			else:
+				eng_bunds = resm[eng].tree._bunds
+				general_bunds = copy(self.tree._bunds)
+				for b in xrange(len(eng_bunds)):
+					if b>0:
+						eng_bunds[b]._parents += general_bunds[b-1].get_num_rays()
+					if b>=len(general_bunds):
+						self.tree._bunds.append(eng_bunds[b])
+					else:
+						self.tree._bunds[b] = concatenate_rays([general_bunds[b], eng_bunds[b]])
+				# Next loop is to get the optics callable objects and copy regroup their values without asumptions about what they are.
+				surfs_engine = resm[eng]._asm.get_surfaces()
+				surfs_general = self._asm.get_surfaces()
 
+				for s in xrange(len(surfs_engine)):
+					keys = surfs_engine[s]._opt.__dict__.keys()
+					for k in keys:
+						surf_engine_dict_k = surfs_engine[s]._opt.__dict__[k]
+						surf_general_dict_k = surfs_general[s]._opt.__dict__[k]
+						if k =='_opt' or k =='_abs' or k =='_sig':
+							continue
+						if len(surf_engine_dict_k):
+							a1 = N.array(surf_engine_dict_k[0])
+							if len(surf_general_dict_k):
+								a2 = N.array(surf_general_dict_k[0])
+								if a1.ndim < a2.ndim:
+									a1.resize(a2.shape[0],1)
+								if a1.ndim > a2.ndim:
+									a2.resize(a1.shape[0],1)
+								self._asm.get_surfaces()[s]._opt.__dict__[k] = [N.concatenate((a1,a2), axis=-1)]
+							else:
+								self._asm.get_surfaces()[s]._opt.__dict__[k] = [a1]
 
-		# Regroup trees:
-		self.tree = RayTree() # Create a new tree for all
-		for t in xrange(N.amax(tree_len)): # Browse through general tree levels up to the maximum length that has been raytraced
-			for eng in xrange(len(resm)): # Browse through bundles of each parallel engine.
-				if t<(tree_len[eng]): # to not go over the length of the present parallel tree.
-					if t==len(self.tree._bunds): # if the index is greater than the actual length of the general tree, add a new bundle to the general tree with the present parallel bundle to initialise it.
-						bundt = trees[eng]._bunds[t]
-					else:	
-						if t>0: # adapt parents indexing prior to concatenation
-							trees[eng]._bunds[t].set_parents(trees[eng]._bunds[t].get_parents()+len(self.tree._bunds[t].get_parents()))
-						bundt = concatenate_rays([bundt, trees[eng]._bunds[t]])
-			self.tree.append(bundt)
-		
-		del trees
 		timepost2 = time.clock()-timepost
 		print 'Post processing reassociation time: ', timepost2,'s'

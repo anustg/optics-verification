@@ -163,7 +163,7 @@ class HexagonalParabolicDishGM(Paraboloid):
             dish.
         focal_length - distance of the focal point from the origin.
         """
-        par_param = 2*math.sqrt(focal_length) # [2]
+        par_param = 2*N.sqrt(focal_length) # [2]
         Paraboloid.__init__(self, par_param, par_param)
         self._R = diameter/2.
     
@@ -190,8 +190,8 @@ class HexagonalParabolicDishGM(Paraboloid):
         
         abs_x = abs(local[:,0,:])
         abs_y = abs(local[:,1,:])
-        outside = abs_x > math.sqrt(3)*self._R/2.
-        outside |= abs_y > self._R - math.tan(N.pi/6.)*abs_x
+        outside = abs_x > N.sqrt(3)*self._R/2.
+        outside |= abs_y > self._R - N.tan(N.pi/6.)*abs_x
         inside = (~outside) & (prm > 1e-9)
         
         select[~N.logical_or(*inside)] = N.nan
@@ -208,10 +208,9 @@ class RectangularParabolicDishGM(Paraboloid):
     are oriented parallel to the X, Y axes.
     """
     def __init__(self, width, height, focal_length):
-        par_param = 2*math.sqrt(focal_length)
+        par_param = 2*N.sqrt(focal_length)
         Paraboloid.__init__(self, par_param, par_param)
         self._half_dims = N.c_[[width, height]]/2
-        #self._R = float(math.sqrt((width/2)**2 + (height/2)**2))
         self._w, self._h = width/2., height/2.
 
 
