@@ -86,7 +86,6 @@ class Renderer():
 
 		tree = self.sim.tree
 		no = coin.SoSeparator()
-		print tree._bunds
 		
 		# loop through the reflection sequences?
 		co = [] # regular lines

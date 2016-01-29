@@ -44,7 +44,7 @@ class Paraboloid(QuadricGM):
         local_normal = N.vstack((partial_x, partial_y, partial_z))
         local_unit = local_normal/N.sqrt(N.sum(local_normal**2, axis=0))
 
-        down = N.sum(dir_loc * local_unit, axis=0) > 0
+        down = N.sum(dir_loc * local_unit, axis=0) > 0.
         local_unit[:,down] *= -1
 
         normals = N.dot(self._working_frame[:3,:3], local_unit)
@@ -105,12 +105,12 @@ class ParabolicDishGM(Paraboloid):
         select = N.empty(prm.shape[1])
         select.fill(N.nan)
 
-        positive = prm > 1e-10
+        positive = prm > 1e-9
         
         coords = N.concatenate((coords, N.ones((2,1,coords.shape[2]))), axis=1)
         local_z = N.sum(N.linalg.inv(self._working_frame)[None,2,:,None]*coords, axis=1)
 
-        under_cut = (local_z <= self._h) & (local_z >= 0)
+        under_cut = (local_z <= self._h) & (local_z >= 1e-9)
         hitting = under_cut & positive
 
         select[N.logical_and(*hitting)] = 1

@@ -112,7 +112,7 @@ class AbsorptionAccountant(object):
         return N.hstack([a for a in self._absorbed if len(a)]), \
             N.hstack([h for h in self._hits if h.shape[1]])
 
-class DirectionAccountant(object):
+class DirectionAccountant(AbsorptionAccountant):
     """
     This optics manager remembers all of the locations where rays hit it
     in all iterations, and the energy absorbed from each ray.
@@ -126,22 +126,16 @@ class DirectionAccountant(object):
             LambertianReflector below).
         absorptivity - to be passed to a new real_optics object.
         """
-        if sigma_xy==None:
-            self._opt = real_optics(absorptivity)
-        else:
-            self._opt = real_optics(absorptivity, sigma_xy)
-        self.reset()
+        AbsorptionAccountant.__init__(self, real_optics, absorptivity, sigma_xy)
     
     def reset(self):
         """Clear the memory of hits (best done before a new trace)."""
-        self._absorbed = []
-        self._hits = []
+        AbsorptionAccountant.reset(self)
         self._directions = []
     
-    def __call__(self, geometry, rays, selector):
-        self._absorbed.append(rays.get_energy()[selector]*self._opt._abs)
+    def __call__(self, geometry, rays, selector):    
+        AbsorptionAccountant.__call__(self, geometry, rays, selector)
         self._directions.append(rays.get_directions()[:,selector])
-        self._hits.append(geometry.get_intersection_points_global())
         return self._opt(geometry, rays, selector)
     
     def get_all_hits(self):
@@ -159,6 +153,7 @@ class DirectionAccountant(object):
         return N.hstack([a for a in self._absorbed if len(a)]), \
             N.hstack([h for h in self._hits if h.shape[1]]), \
             N.hstack([d for d in self._directions if d.shape[1]])
+
 
 class ReflectiveReceiver(AbsorptionAccountant):
     """A wrapper around AbsorptionAccountant with a Reflective optics"""
