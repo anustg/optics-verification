@@ -130,6 +130,8 @@ def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=No
     ang_range - in radians, the maximum deviation from <direction>.
     flux - if not None, the ray bundle's energy is set such that each ray has
         an equal amount of energy, and the total energy is flux*pi*radius**2
+    radius_in - Inner radius if the disc is pierced
+    angular_span - wedge of the disc to consider
     
     Returns: 
     A RayBundle object with the above characteristics set.
@@ -344,6 +346,7 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, 
     direction - The orientation of the overall bundle. 
                Positive if in the same direction as the depth.
     rays_in - True if rays are fired towards the axis of the frustum.
+    angular_span - wedge of the shape to consider.
 
     Returns:
     A raybundle object with the above characteristics set.
@@ -400,6 +403,7 @@ def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True, procs=
     direction - the direction of outgoing rays as projected on the cylinder axis. 
                Positive if in the same direction as lc.
     rays_in - True if rays are fired towards the axis of the frustum.
+    angular_span - wedge of the shape to consider.
 
     Returns:
     A raybundle object with the above characteristics set.

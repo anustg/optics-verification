@@ -36,7 +36,7 @@ class FlatGeometryManager(GeometryManager):
         
         # Vet out parallel rays:
         dt = N.dot(d.T, frame[:3,2])
-        unparallel = abs(dt) > 1e-10
+        unparallel = abs(dt) > 1e-9
         
         # `params` holds the parametric location of intersections along the ray 
         params = N.empty(n)
@@ -47,11 +47,11 @@ class FlatGeometryManager(GeometryManager):
         
         # Takes into account a negative depth
         # Note that only the 3rd row of params is relevant here!
-        negative = params < 1e-10
-        params[negative] = N.Inf
+        negative = params < 1e-9
+        params[negative] = N.inf
         
         self._params = params
-        self._backside = dt > 0
+        self._backside = dt > 0.
         return params
         
     def select_rays(self, idxs):

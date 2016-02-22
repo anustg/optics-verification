@@ -388,6 +388,7 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 
 		self.reset_opt()
 
+
 class Four_parameters_cavity_RTVF(Two_N_parameters_cavity_RTVF):
 	'''
 	Wrapper around the Two_N_parameters_cavity_RTVF class to a 4 parameters cavity.
@@ -400,7 +401,7 @@ class FONaR_RTVF(RTVF):
 	'''
 	FONaR view factor calculation class.
 	'''
-	def __init__(self, Assembly, binning_scheme, areas, num_rays=10000, precision=0.01):
+	def __init__(self, Assembly, binning_scheme, areas, num_rays=10000, precision=0.01, concave=False):
 		RTVF.__init__(self, num_rays, precision)
 		self.binning_scheme = binning_scheme
 		self.areas = areas
@@ -432,8 +433,11 @@ class FONaR_RTVF(RTVF):
 			for i in xrange(N.shape(self.VF)[0]):
 				if i == 0:
 					rays_in = True
-				else: # If more variations implemented on the absorbetr shape: review the policy here.
-					rays_in = False
+				else: # Single concave keyword on input to drive the rays towards the axis of symmetry. Has to be refined for partially concave geometries.
+					if concave == True:
+						rays_in = True
+					else:
+						rays_in = False
 				S = []
 				for p in xrange(procs):
 					S.append(self.gen_source(binning_scheme[i], num_rays, rays_in, procs))
@@ -507,5 +511,113 @@ class FONaR_RTVF(RTVF):
 			env_abs = N.sum(Envelope_abs[env_in_bin])
 
 			self.VF[n,1+i] = abs_abs+env_abs
+
+		self.reset_opt()
+
+class Cav_3D_RTVF(RTVF):
+	'''
+	FONaR view factor calculation class.
+	'''
+	def __init__(self, Assembly, binning_scheme, areas, num_rays=10000, precision=0.01, concave=False):
+		RTVF.__init__(self, num_rays, precision)
+		self.binning_scheme = binning_scheme
+		self.areas = areas
+		procs = 8 # number of CPUs to be used
+
+		self.t0 = time.clock()
+
+		self.VF = N.zeros((N.shape(binning_scheme)[0], N.shape(binning_scheme)[0]))
+		self.progress = N.ones(N.shape(self.VF), dtype=N.bool)
+
+		# Standard deviation computation variables.
+		self.VF_esperance = N.zeros(N.shape(self.VF))
+		self.Qsum = N.zeros(N.shape(self.VF))
+		self.stdev_VF = N.zeros(N.shape(self.VF))
+		self.stdev_reciprocity = N.zeros(N.shape(self.VF))
+
+		self.p = N.zeros(N.shape(self.VF)[0])
+
+		self.ray_counts = N.ones(len(areas))*int(self.num_rays)
+
+		vf_tracer = TracerEngineMP(Assembly)
+		vf_tracer.itmax = 1 # stop iteration after this many ray bundles were generated (i.e. after the original rays intersected some surface this many times).
+		vf_tracer.minener = 1e-15 # minimum energy threshold
+		stable_stats = 0
+		while (self.progress==True).any() or stable_stats<3:
+
+			tp = time.clock()
+
+			for i in xrange(N.shape(self.VF)[0]):
+				if i == 0:
+					rays_in = True
+				else: # Single concave keyword on input to drive the rays towards the axis of symmetry. Has to be refined for partially concave geometries.
+					if concave == True:
+						rays_in = True
+					else:
+						rays_in = False
+				S = []
+				for p in xrange(procs):
+					S.append(self.gen_source(binning_scheme[i], num_rays, rays_in, procs))
+
+				vf_tracer.multi_ray_sim(S, procs = procs)
+				#vf_tracer.ray_tracer(S[0],1,1e-15)
+				self.A = vf_tracer._asm # due to multiprocessing inheritance break
+				#if i == 2:
+				#	view = Renderer(vf_tracer)
+				#	view.show_rays()
+				self.alloc_VF(i)
+
+			self.p += self.ray_counts
+			self.test_precision()
+
+			print '		Progress:', N.sum(self.progress),'/', len(self.progress),'; Pass duration:', time.clock()-tp, 's'
+			if N.sum(self.progress) ==0:
+				stable_stats +=1
+
+		t1=time.clock()-self.t0
+		print '	VF calculation time:',t1,'s'
+
+
+	def gen_source(self, ahr, num_rays, rays_in, procs):
+		center = N.vstack([0,0,ahr[1,0]])
+		if ahr[2,0]==ahr[2,1]:
+			S = vf_cylinder_bundle(num_rays=num_rays, rc=ahr[2,0], lc=ahr[1,1]-ahr[1,0], center=center, direction=N.array([0,0,1]), rays_in=rays_in, procs=procs, angular_span=[ahr[0,0],ahr[0,1]])
+		elif ahr[1,0]==ahr[1,1]:
+			S = solar_disk_bundle(num_rays=num_rays, center=center, direction=N.array([0,0,1]), radius=ahr[2,1], ang_range=N.pi/2., flux=1./(N.pi*N.abs(ahr[2,1]**2-ahr[2,0]**2)/procs), radius_in=ahr[2,0], angular_span=[ahr[0,0],ahr[0,1]])
+		else:
+			S = vf_frustum_bundle(num_rays=num_rays, r0=ahr[2,0], r1=ahr[2,1], depth=ahr[1,1]-ahr[1,0], center=center, direction=N.array([0,0,1]), rays_in=rays_in, procs=procs, angular_span=[ahr[0,0],ahr[0,1]])
+		return S
+
+	def alloc_VF(self, n):
+
+		AP = self.A.get_objects()[0]
+		ABS = self.A.get_objects()[1]
+
+		# Aperture:
+		Aperture_abs, Aperture_hits = AP.get_surfaces()[0].get_optics_manager().get_all_hits()
+		self.VF[n,0] = N.sum(Aperture_abs)
+
+		for s in xrange(len(ABS.get_surfaces())):
+			Absorber_abs, Absorber_hits = ABS.get_surfaces()[s].get_optics_manager().get_all_hits()
+
+			for i in xrange(N.shape(self.VF)[0]-1):
+				ahr = self.binning_scheme[1+i]
+				# Envelope and absorber:
+				h0 = ahr[1,0]
+				h1 = ahr[1,1]
+				ang0 = ahr[0,0]
+				ang1 = ahr[0,1]
+				# comment: a test on radii could be added for more complex geometries
+			
+				absorber_in_h = N.logical_and(Absorber_hits[2]>=h0, Absorber_hits[2]<h1)
+				angles_absorber = N.arctan(Absorber_hits[1]/Absorber_hits[0])
+				angles_absorber[Absorber_hits[0]<0.] = N.pi+angles_absorber[Absorber_hits[0]<0.]
+				angles_absorber[N.logical_and(Absorber_hits[0]>0.,Absorber_hits[1]<0.)] = 2.*N.pi+angles_absorber[N.logical_and(Absorber_hits[0]>0.,Absorber_hits[1]<0.)]
+				absorber_in_ang = N.logical_and(angles_absorber>ang0, angles_absorber<ang1)
+
+				abs_in_bin = N.logical_and(absorber_in_h, absorber_in_ang)
+				abs_abs = N.sum(Absorber_abs[abs_in_bin])
+
+				self.VF[n,1+i] = abs_abs
 
 		self.reset_opt()

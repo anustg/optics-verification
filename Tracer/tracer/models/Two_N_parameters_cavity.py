@@ -17,8 +17,8 @@ from tracer.spatial_geometry import *
 
 from freesteam import *
 
-from view_factors_3D import *
-from emissive_losses import *
+from emissive_losses.emissive_losses import *
+from emissive_losses.view_factors_3D import *
 
 class TwoNparamcav(Assembly):
 	'''

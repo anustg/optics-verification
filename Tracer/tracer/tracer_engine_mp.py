@@ -16,17 +16,11 @@ class TracerEngineMP(TracerEngine):
 
 	Not the cleanest or finest implementation. Could be blended with the original engine and use the very same api. It works.
 	'''
-
-	def trace(self, source):
-		# Raytrace in a separate method to be called by the ProcessingPool.map() method.
-		self.ray_tracer(source, self.reps, self.minener, tree=True)
-		# Returns the tracer_engine instance traced.
-		return self
-
-	def multi_ray_sim(self, sources, procs=8):
-		self.minener = 1e-10 # minimum energy threshold
-		self.reps = 1000 # stop iteration after this many ray bundles were generated (i.e. 
+	def multi_ray_sim(self, sources, procs=8, minener=1e-10, reps=1000 , tree_switch=True):
+		self.minener = minener # minimum energy threshold
+		self.reps = reps # stop iteration after this many ray bundles were generated (i.e. 
 					# after the original rays intersected some surface this many times).
+		self.tree_switch = tree_switch
 		# The multiprocessing raytracing method to call from the original engine.
 		if len(sources) != procs:
 			raise Exception('Number of sources and processors do not agree')
@@ -34,51 +28,90 @@ class TracerEngineMP(TracerEngine):
 		# Creates a pool of processes and makes them raytrace one different source each. The resm list returned is a list of copies of the original engine post raytrace.
 		timetrace = time.clock()
 		pool = Pool(processes=procs)
-		resm = pool.map(self.trace, sources)
-
+		def trace(source):
+			self.ray_tracer(source, self.reps, self.minener, self.tree_switch)
+			return self
+		resm = pool.map(trace, sources)
+		del pool
+		
 		timetrace = time.clock() - timetrace
-		print 'Raytrace time: ', timetrace,'s'
+		#print 'Raytrace time: ', timetrace,'s'
 
 		timepost = time.clock()
 
 		# New general tree:
 		for eng in xrange(len(resm)):
+
 			# Get and regroup results in one tree and assembly only:
-			if eng == 0 :
-				self.tree =  resm[eng].tree
+			if eng == 0 : # Initialise with the first engine
+				if self.tree_switch == True:
+					self.tree =  resm[eng].tree
 				self._asm = resm[eng]._asm
 			else:
-				eng_bunds = resm[eng].tree._bunds
-				general_bunds = copy(self.tree._bunds)
-				for b in xrange(len(eng_bunds)):
-					if b>0:
-						eng_bunds[b]._parents += general_bunds[b-1].get_num_rays()
-					if b>=len(general_bunds):
-						self.tree._bunds.append(eng_bunds[b])
-					else:
-						self.tree._bunds[b] = concatenate_rays([general_bunds[b], eng_bunds[b]])
+				if self.tree_switch == True:
+					eng_bunds = resm[eng].tree._bunds
+					for b in xrange(len(eng_bunds)):
+						if b > 0: # if it is not the starting bundle (emanating from the source) add to the parents indices according to the size of the general tree bundle size.
+							eng_bunds[b]._parents = eng_bunds[b]._parents+next_parents_adjust
+						if b == len(self.tree._bunds): # If the bundle number is over the existing limit in the general tree, append it to increase the general tree size.
+							self.tree.append(eng_bunds[b])
+						else: # concatenate the bundle with its existing counterpart in the general tree
+							next_parents_adjust = self.tree._bunds[b].get_num_rays() # to adjust the index of parents before changing the total size of the general tree bundle.
+							self.tree._bunds[b] = concatenate_rays([self.tree._bunds[b], eng_bunds[b]])
+
 				# Next loop is to get the optics callable objects and copy regroup their values without asumptions about what they are.
-				surfs_engine = resm[eng]._asm.get_surfaces()
-				surfs_general = self._asm.get_surfaces()
+				subas_engine = resm[eng]._asm.get_assemblies()
+				if len(subas_engine):
+					for a in xrange(len(subas_engine)):
+						objs_subas = subas_engine[a].get_local_objects()
+						for o in xrange(len(objs_subas)):
+							surfs_object = objs_subas[o].get_surfaces()
+							for s in xrange(len(surfs_object)):
+								for k in surfs_object[s]._opt.__dict__.keys():
+									if k != '_opt':
+										[self._asm._assemblies[a]._objects[o].surfaces[s]._opt.__dict__[k].append(q) for q in surfs_object[s]._opt.__dict__[k]]
 
-				for s in xrange(len(surfs_engine)):
-					keys = surfs_engine[s]._opt.__dict__.keys()
-					for k in keys:
-						surf_engine_dict_k = surfs_engine[s]._opt.__dict__[k]
-						surf_general_dict_k = surfs_general[s]._opt.__dict__[k]
-						if k =='_opt' or k =='_abs' or k =='_sig':
-							continue
-						if len(surf_engine_dict_k):
-							a1 = N.array(surf_engine_dict_k[0])
-							if len(surf_general_dict_k):
-								a2 = N.array(surf_general_dict_k[0])
-								if a1.ndim < a2.ndim:
-									a1.resize(a2.shape[0],1)
-								if a1.ndim > a2.ndim:
-									a2.resize(a1.shape[0],1)
-								self._asm.get_surfaces()[s]._opt.__dict__[k] = [N.concatenate((a1,a2), axis=-1)]
-							else:
-								self._asm.get_surfaces()[s]._opt.__dict__[k] = [a1]
+				objs_engine = resm[eng]._asm.get_local_objects()
+				if len(objs_engine):
+					for o in xrange(len(objs_engine)):
+						surfs_object = objs_engine[o].get_surfaces()
+						for s in xrange(len(surfs_object)):
+							for k in surfs_object[s]._opt.__dict__.keys():
+								if k != '_opt':
+									[self._asm._objects[o].surfaces[s]._opt.__dict__[k].append(q) for q in surfs_object[s]._opt.__dict__[k]]
 
+		# We need the next part to reshape everything to the right array format.
+		asm_subas = self._asm.get_assemblies()
+		if len(asm_subas):
+			for a in xrange(len(asm_subas)):
+				objs_subas = asm_subas[a].get_local_objects()
+				for o in xrange(len(objs_subas)):
+					surfs_object = objs_subas[o].get_surfaces()
+					for s in xrange(len(surfs_object)):
+						for k in surfs_object[s]._opt.__dict__.keys():
+							if k != '_opt':
+								if len(surfs_object[s]._opt.__dict__[k]):
+									if k == '_absorbed':
+										self._asm._assemblies[a]._objects[o].surfaces[s]._opt.__dict__[k] = [N.hstack(self._asm._assemblies[a]._objects[o].surfaces[s]._opt.__dict__[k])]
+									else:	
+										self._asm._assemblies[a]._objects[o].surfaces[s]._opt.__dict__[k] = [N.column_stack(self._asm._assemblies[a]._objects[o].surfaces[s]._opt.__dict__[k])]
+								else:
+									self._asm._assemblies[a]._objects[o].surfaces[s]._opt.__dict__[k] = []
+	
+		asm_objs = self._asm.get_local_objects()
+		if len(asm_objs):
+			for o in xrange(len(asm_objs)):
+				surfs_object = asm_objs[o].get_surfaces()
+				for s in xrange(len(surfs_object)):
+					if k != '_opt':
+						if len(surfs_object[s]._opt.__dict__[k]):
+							if k == '_absorbed':
+								self._asm._objects[o].surfaces[s]._opt.__dict__[k] = [N.hstack(self._asm._objects[o].surfaces[s]._opt.__dict__[k])]
+							else:	
+								self._asm._objects[o].surfaces[s]._opt.__dict__[k] = [N.column_stack(self._asm._objects[o].surfaces[s]._opt.__dict__[k])]
+						else:
+							self._asm._objects[o].surfaces[s]._opt.__dict__[k] = []	
+					#print 'general assembly',' object ', o,' surface ', s,' number of rays: ', len(self._asm._objects[o].surfaces[s].get_optics_manager().get_all_hits()[0])
+		del resm
 		timepost2 = time.clock()-timepost
-		print 'Post processing reassociation time: ', timepost2,'s'
+		#print 'Post processing reassociation time: ', timepost2,'s'
