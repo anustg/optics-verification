@@ -335,7 +335,8 @@ class TwoNparamcav(Assembly):
 		if inc_radiation != None:
 			inc_radiation = N.hstack((N.nan,inc_radiation)) # To take into account the aperture in the radiosity system.
 		# Solve radiosity problem
-		AA,bb,J,Eb,T,q,Q = radiosity_RTVF(VF, areas, self.emsReceiver, Tamb, Trec, inc_radiation)
+		T = N.hstack((Tamb, Trec))
+		AA,bb,J,Eb,T,q,Q = radiosity_RTVF(VF, areas, self.emsReceiver, T, inc_radiation)
 		self.q = q
 		self.Q = Q
 		self.T = T		

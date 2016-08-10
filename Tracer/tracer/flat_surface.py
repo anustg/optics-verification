@@ -47,7 +47,7 @@ class FlatGeometryManager(GeometryManager):
         
         # Takes into account a negative depth
         # Note that only the 3rd row of params is relevant here!
-        negative = params < 1e-9
+        negative = params < 0.
         params[negative] = N.inf
         
         self._params = params
@@ -134,6 +134,7 @@ class FiniteFlatGM(FlatGeometryManager):
         v = self._working_bundle.get_vertices() 
         d = self._working_bundle.get_directions()
         p = self._params
+
         del self._params
         
         # Global coordinates on the surface:
@@ -229,7 +230,10 @@ class RoundPlateGM(FiniteFlatGM):
         if Re <= 0.:
             raise ValueError("Radius must be positive")
         if Ri != None:
-            if Ri <=0.:
+            if Ri >= Re:
+                print 'Ri: ',Ri, 'Re: ', Re
+                raise ValueError("Inner Radius must be lower than the outer one")
+            if Ri <= 0.:
                 raise ValueError("Radius must be positive")
         
         self._Ri = Ri       

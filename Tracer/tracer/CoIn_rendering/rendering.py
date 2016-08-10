@@ -79,7 +79,7 @@ class Renderer():
 
 		SoGui.mainLoop()
 
-	def show_rays(self, escaping_len=0.2, max_rays=None, resolution=None):
+	def show_rays(self, escaping_len=.2, max_rays=None, resolution=None):
 		"""
 		Method to draw the rays to a Coin3D scenegraph. Needs to be called after a raytrace has been peroformed.
 		"""

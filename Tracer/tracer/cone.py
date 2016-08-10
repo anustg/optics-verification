@@ -48,7 +48,7 @@ class InfiniteCone(QuadricGM):
         # Identify the orientation of the normal considering the incident orientation of the 
         # ray. Treat the specific case of the apex setting the normal to be
         # -1*dir_loc at that point.
-        down = N.sum(dir_loc * local_unit, axis=0) > 0.
+        down = N.sum(dir_loc * local_unit, axis=0) > 1e-9
         apex = (hit[2] == self.a)
         local_unit[:,down] *= -1.
         local_unit[:,apex] = N.vstack((0.,0.,-1.))
@@ -109,7 +109,7 @@ class FiniteCone(InfiniteCone):
         
         # Check the valid hitting points:
         inside = (height >= 0) & (height <= self.h)
-        positive = prm > 1e-10 # to account for flating point precision issues.
+        positive = prm > 1e-9 # to account for flating point precision issues.
 
         # Choses between the two intersections offered by the surface.
         hitting = inside & positive
@@ -203,7 +203,7 @@ class ConicalFrustum(InfiniteCone):
         # Checks if the local_z-projected hit coords are in the actual height of the furstum
         # and if the parameter is positive so that the ray goes ahead.
         inside = (self.z1 <= height) & (height <= self.z2)
-        positive = prm > 1e-10
+        positive = prm > 1e-9
         hitting = inside & positive
 
         # Choses between the two intersections offered by the surface.

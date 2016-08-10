@@ -16,11 +16,11 @@ class TracerEngineMP(TracerEngine):
 
 	Not the cleanest or finest implementation. Could be blended with the original engine and use the very same api. It works.
 	'''
-	def multi_ray_sim(self, sources, procs=8, minener=1e-10, reps=1000 , tree_switch=True):
+	def multi_ray_sim(self, sources, procs=8, minener=1e-10, reps=1000 , tree=True):
 		self.minener = minener # minimum energy threshold
 		self.reps = reps # stop iteration after this many ray bundles were generated (i.e. 
 					# after the original rays intersected some surface this many times).
-		self.tree_switch = tree_switch
+		self.tree_switch = tree
 		# The multiprocessing raytracing method to call from the original engine.
 		if len(sources) != procs:
 			raise Exception('Number of sources and processors do not agree')

@@ -9,8 +9,8 @@ References:
 
 from numpy import random, linalg as LA
 import numpy as N
-from .ray_bundle import RayBundle
-from .spatial_geometry import *
+from tracer.ray_bundle import RayBundle
+from tracer.spatial_geometry import *
 
 def single_ray_source(position, direction, flux=None):
     '''
@@ -114,7 +114,7 @@ def edge_rays_directions(num_rays, ang_range):
 
     return a
 
-def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=None, radius_in=0., angular_span=[0.,2.*N.pi]):
+def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=None, radius_in=0., angular_span=[0.,2.*N.pi], procs=1):
     """
     Generates a ray bundle emanating from a disk, with each surface element of 
     the disk having the same ray density. The rays all point at directions uniformly 
@@ -161,6 +161,8 @@ def solar_disk_bundle(num_rays,  center,  direction,  radius, ang_range, flux=No
     rayb = RayBundle(vertices=vertices_global + center, directions=directions)
     if flux != None:
         rayb.set_energy(N.pi*(radius**2.-radius_in**2.)/num_rays*flux*N.ones(num_rays))
+    else:
+        rayb.set_energy(N.ones(num_rays)/num_rays/procs)
     return rayb
 
 def solar_rect_bundle(num_rays, center, direction, x, y, ang_range, flux=None):
@@ -267,23 +269,27 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
         integ_phi_dni[i] = 2.*N.pi*N.trapz(phi_dni_int*theta_int*1000.,theta_int*1000.)
     for i in xrange(len(theta_csr_int)-1):
         integ_phi_csr[i] = 2.*N.pi*N.exp(kappa)/(gamma+2.)*((theta_csr_int[i+1]*1000.)**(gamma+2.)-(theta_csr_int[i]*1000.)**(gamma+2.))
-
-    integ_phi = N.sum(integ_phi_dni)+N.sum(integ_phi_csr)
-    integ_phis = N.hstack((integ_phi_dni, integ_phi_csr))
+    if CSR == 0.:
+        integ_phi = N.sum(integ_phi_dni)
+        integ_phis = N.hstack((integ_phi_dni))
+    else:
+        integ_phi = N.sum(integ_phi_dni)+N.sum(integ_phi_csr)
+        integ_phis = N.hstack((integ_phi_dni, integ_phi_csr))
 
     theta = []
-
     # Step 2: random declaration slice by slice according to the Buie sunshape:
     for i in xrange(len(theta_dni_int)-1):
         theta.append(N.random.uniform(low=theta_dni_int[i], high=theta_dni_int[i+1], size=N.round(integ_phi_dni[i]/integ_phi*num_rays)))
-    for i in xrange(len(theta_csr_int)-1):
-        theta.append(N.random.uniform(low=theta_csr_int[i], high=theta_csr_int[i+1], size=N.round(integ_phi_csr[i]/integ_phi*num_rays)))
+    if CSR != 0.:
+        for i in xrange(len(theta_csr_int)-1):
+            theta.append(N.random.uniform(low=theta_csr_int[i], high=theta_csr_int[i+1], size=N.round(integ_phi_csr[i]/integ_phi*num_rays)))
     theta= N.hstack(theta)
     # re-arange if rounding of the number of rays per interval gives too much or not enough rays in total.
     if len(theta) < num_rays:
         theta = N.hstack((theta,N.random.uniform(low=N.sin(0.), high=N.sin(theta_tot), size=num_rays-len(theta))))
     if len(theta) > num_rays:
         theta = theta[:num_rays]
+       
 
     # Generate directions:
     xi1 = random.uniform(high=2.*N.pi, size=num_rays)
@@ -305,7 +311,7 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
     rayb = RayBundle(vertices = vertices_global+center, directions = directions, energy = energy)
     csr_calc = N.sum(energy[aureole])/N.sum(energy)
 
-    return rayb#, csr_calc, theta, integ_phis, thetas_int, energy
+    return rayb
 
 def square_bundle(num_rays, center, direction, width):
     """
@@ -333,7 +339,7 @@ def square_bundle(num_rays, center, direction, width):
     rayb.set_directions(directions)
     return rayb
 
-def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, procs=1, angular_span=[0.,2.*N.pi]):
+def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, flux=None , rays_in=True, procs=1, angular_span=[0.,2.*N.pi], angular_range=N.pi/2.):
     '''
     Generate a frustum shaped lambertian source with randomly situated rays to compute view factors. The overall energy of the bundle is 1.
 
@@ -354,9 +360,13 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, 
     r0 = float(r0)
     r1 = float(r1)
     depth = float(depth)
+    if r0>r1:
+         raise AttributeError('wrong radii') 
+    if depth <0.:
+         raise AttributeError('wrong depth')
     num_rays = float(num_rays)
 
-    dir_flat = pillbox_sunshape_directions(num_rays, N.pi/2.)
+    dir_flat = pillbox_sunshape_directions(num_rays, angular_range)
 
     c = (r1-r0)/depth
 
@@ -370,8 +380,8 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, 
     ys = rs * N.sin(phi_s)
 
     theta_s = N.arctan(c)
-
-    yrot = roty(theta_s-N.pi/2.)[:3,:3]
+    theta_rot = -N.pi/2.+theta_s
+    yrot = roty(theta_rot)[:3,:3]
     local_unit = N.zeros((N.shape(dir_flat)))
     for t in xrange(N.shape(dir_flat)[1]):
         zrot = rotz(phi_s[t])[:3,:3]
@@ -382,16 +392,22 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, rays_in=True, 
         local_unit = -local_unit
 
     vertices_local = N.vstack((xs, ys, zs))
+
     perp_rot = rotation_to_z(direction)
     vertices_global = N.dot(perp_rot, vertices_local)
     directions = N.dot(perp_rot, local_unit)
 
-    energy = N.ones(num_rays)/num_rays/procs
+    if flux == None:
+        energy = N.ones(num_rays)/num_rays/procs
+    else:
+        area = (angular_span[1]-angular_span[0])*(r1+r0)/2.*N.sqrt(abs(r1-r0)**2.+depth**2.)
+        energy = N.ones(num_rays)*flux*area/num_rays/procs
+
     rayb = RayBundle(vertices = vertices_global+center, directions = directions, energy = energy)
 
     return rayb
 
-def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True, procs=1, angular_span=[0.,2.*N.pi]):
+def vf_cylinder_bundle(num_rays, rc, lc, center, direction, flux=None, rays_in=True, procs=1, angular_span=[0.,2.*N.pi]):
     '''
     Generate a cylinder shaped lambertian source with randomly situated rays to compute view factors. The overall energy of the bundle is 1.
 
@@ -439,7 +455,11 @@ def vf_cylinder_bundle(num_rays, rc, lc, center, direction, rays_in=True, procs=
     plt.hist(vertices_local[2,:]/(N.sqrt(vertices_local[0,:]**2.+vertices_local[1,:]**2.)))
     plt.show()
     '''
-    energy = N.ones(num_rays)/num_rays/procs
+    if flux == None:
+        energy = N.ones(num_rays)/num_rays/procs
+    else:
+        area = rc*(angular_span[1]-angular_span[0])*lc
+        energy = N.ones(num_rays)*flux*area/num_rays/procs
 
     rayb = RayBundle(vertices = vertices_global+center, directions = directions, energy = energy)
 

@@ -59,7 +59,7 @@ class QuadricGM(GeometryManager):
 
         # Identify quadric intersections        
         delta = B**2. - 4.*A*C
-        any_inters = delta >= 1e-10
+        any_inters = delta >= 1e-9
         num_inters = any_inters.sum()
         if num_inters == 0:
             self._vertices = vertices
@@ -125,7 +125,7 @@ class QuadricGM(GeometryManager):
         Returns:
         The index of the selected intersection, or None if neither will do.
         """
-        is_positive = prm > 0.
+        is_positive = prm > 1e-9
         select = N.empty(prm.shape[1])
         select.fill(N.nan)
 
