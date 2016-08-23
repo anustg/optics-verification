@@ -92,7 +92,7 @@ class RealReflective(object):
     def __call__(self, geometry, rays, selector):
         ideal_normals = geometry.get_normals()
         # Creates projection of error_normal on the surface (sin can be avoided because of very small angles).
-        phis = 2.*N.pi*N.random.normal(size=N.shape(ideal_normals[1]))
+        phis = 2.*N.pi*N.random.uniform(size=N.shape(ideal_normals[1]))
         thetas = N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
         normal_errors_x = N.cos(phis)*N.sin(thetas)
         normal_errors_y = N.sin(phis)*N.sin(thetas)
@@ -104,9 +104,7 @@ class RealReflective(object):
         # Build the normal_error vectors in the local frame.
         real_normals = N.zeros(N.shape(ideal_normals))
         for i in xrange(N.shape(real_normals)[1]):
-            real_normals[:,i] = ideal_normals[:,i]+N.dot(rots_norms[i], normal_errors[:,i])
-        #normal_errors = N.dot(geometry._working_frame[:3,:3], N.vstack((normal_errors_x, normal_errors_y, normal_errors_z)))
-        #real_normals = ideal_normals + normal_errors
+            real_normals[:,i] = N.dot(rots_norms[i], normal_errors[:,i])
         real_normals_unit = real_normals/N.sqrt(N.sum(real_normals**2, axis=0))
         # Call reflective optics with the new set of normals to get reflections affected by 
         # shape error.
