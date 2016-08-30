@@ -31,7 +31,7 @@ class Reflective(object):
     def reset(self):
         pass
 
-class BivarReflective(object):
+class RealReflective(object):
     '''
     Generates a function that represents the optics of an opaque absorptive surface with specular reflections and realistic surface slope error. The surface slope error is considered equal in both x and y directions. The consequent distribution of standard deviation is described by a radial bivariate normal distribution law.
 
@@ -48,17 +48,22 @@ class BivarReflective(object):
 
     def __call__(self, geometry, rays, selector):
         ideal_normals = geometry.get_normals()
+
         # Creates projection of error_normal on the surface (sin can be avoided because of very small angles).
         normal_errors_x = N.sin(N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1])))
         normal_errors_y = N.sin(N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1])))
-        normal_errors_z = N.sqrt(1.-normal_errors_x**2.-normal_errors_y**2.)-1. #N.zeros(N.shape(ideal_normals[1]))
+        normal_errors_z = N.ones(N.shape(ideal_normals[1])) #N.zeros(N.shape(ideal_normals[1]))
         normal_errors = N.vstack((normal_errors_x, normal_errors_y, normal_errors_z))
+
         # Determine rotation matrices for each normal:
         rots_norms = rotation_to_z(ideal_normals.T)
+
         # Build the normal_error vectors in the local frame.
         real_normals = N.zeros(N.shape(ideal_normals))
+
         for i in xrange(N.shape(real_normals)[1]):
-            real_normals[:,i] = ideal_normals[:,i]+N.dot(rots_norms[i], normal_errors[:,i])
+            real_normals[:,i] = N.dot(rots_norms[i], normal_errors[:,i])
+
         #normal_errors = N.dot(geometry._working_frame[:3,:3], N.vstack((normal_errors_x, normal_errors_y, normal_errors_z)))
         #real_normals = ideal_normals + normal_errors
         real_normals_unit = real_normals/N.sqrt(N.sum(real_normals**2, axis=0))
@@ -74,7 +79,8 @@ class BivarReflective(object):
     def reset(self):
         pass
 
-class RealReflective(object):
+
+
     '''
     Generates a function that represents the optics of an opaque absorptive surface with specular reflections and realistic surface slope error. The surface slope error is considered equal in both x and y directions. The consequent distribution of standard deviation is described by a radial bivariate normal distribution law.
 
@@ -84,7 +90,7 @@ class RealReflective(object):
     
     Returns:
     Reflective - a function with the signature required by surface
-    '''
+   
     def __init__(self, absorptivity, sigma):
         self._abs = absorptivity
         self._sig = sigma
@@ -117,6 +123,7 @@ class RealReflective(object):
 
     def reset(self):
         pass
+    '''
 
 class AbsorptionAccountant(object):
     """
@@ -372,3 +379,4 @@ class LambertianDetector(DirectionAccountant):
 
 
 # vim: et:ts=4
+
