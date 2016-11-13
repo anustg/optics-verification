@@ -11,7 +11,7 @@ from emissive_losses import radiosity_RTVF
 #			[0.172, 0.210, 0.618, 0.]])
 #J = [459.084, 556.13, 2139, -258.8]
 #cyl = Cylinder_cavity_RTVF(1.,1., [1.,1.], 5000, 0.005)
-cyl = Two_N_parameters_cavity_RTVF(apertureRadius=1., frustaRadii=[1.0000001,1.], frustaDepths=[1.,1.], coneDepth=0., el_FRUs=N.array([10.,10.]), el_CON=1., num_rays=100000., precision=0.0005)
+cyl = Two_N_parameters_cavity_RTVF(apertureRadius=1., frustaRadii=[1.], frustaDepths=[2.], coneDepth=0., el_FRUs=N.array([2.]), el_CON=1., num_rays=100000., precision=0.001)
 
 VF = cyl.VF_esperance
 areas = cyl.areas

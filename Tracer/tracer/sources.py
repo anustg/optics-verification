@@ -217,7 +217,7 @@ def edge_rays_bundle(num_rays,  center,  direction,  radius, ang_range, flux=Non
         rayb.set_energy(N.pi*(radius**2.-radius_in**2.)/num_rays*flux*N.ones(num_rays))
     return rayb
 
-def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
+def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None, pre_process_CSR=True):
     '''
     Generate a ray bundle according to Buie et al.: "Sunshape distributions for terrestrial simulations." Solar Energy 74 (2003) 113-122 (DOI: 10.1016/S0038-092X(03)00125-7).
 
@@ -233,8 +233,8 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
     A raybundle object with the above characteristics set.
     '''
     # Angles of importance:
-    theta_dni = 4.65e-3 # rad
-    theta_tot = 43.6e-3 # rad
+    theta_dni = 4.65e-3 # mrad
+    theta_tot = 43.6e-3 # mrad
 
     # Rays vertices (start positions):
 
@@ -250,55 +250,48 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
     # Uniform ray energy:
     energy = N.ones(num_rays)*flux*S/num_rays
 
-    # Buie Sunshape parameters:
-    kappa = 0.9*N.log(13.5*CSR)*CSR**(-0.3)
-    gamma = 2.2*N.log(0.52*CSR)*CSR**(0.43)-0.1
+    # Polar angle array:
+    thetas = N.zeros(num_rays)
 
     # Discrete random ray directions generation according to Buie sunshape
     # Step 1: integration over the whole Sunshape: 
-    theta_dni_int = N.linspace(0.,theta_dni,num=800)
-    theta_csr_int = N.linspace(theta_dni,theta_tot,num=800)
-    thetas_int = N.hstack((theta_dni_int,theta_csr_int))
+    nelem = 210
 
-    integ_phi_dni = N.zeros(len(theta_dni_int))
-    integ_phi_csr = N.zeros(len(theta_csr_int))
+    theta_int = N.linspace(0., theta_dni*1000., num=nelem)
+    phi_dni_int = N.sin(theta_int/1000.)*N.cos(0.326*theta_int)/N.cos(0.308*theta_int)
+    integ_phi_dni = theta_dni/nelem/2.*(phi_dni_int[:-1]+phi_dni_int[1:])
 
-    for i in xrange(len(theta_dni_int)-1):
-        theta_int = N.linspace(theta_dni_int[i], theta_dni_int[i+1], num=400)
-        phi_dni_int = N.cos(0.326*theta_int*1000.)/N.cos(0.308*theta_int*1000.)
-        integ_phi_dni[i] = 2.*N.pi*N.trapz(phi_dni_int*theta_int*1000.,theta_int*1000.)
-    for i in xrange(len(theta_csr_int)-1):
-        integ_phi_csr[i] = 2.*N.pi*N.exp(kappa)/(gamma+2.)*((theta_csr_int[i+1]*1000.)**(gamma+2.)-(theta_csr_int[i]*1000.)**(gamma+2.))
     if CSR == 0.:
         integ_phi = N.sum(integ_phi_dni)
-        integ_phis = N.hstack((integ_phi_dni))
     else:
-        integ_phi = N.sum(integ_phi_dni)+N.sum(integ_phi_csr)
-        integ_phis = N.hstack((integ_phi_dni, integ_phi_csr))
+        if pre_process_CSR:
+            if CSR<=0.1:
+                CSR = -2.245e+03*CSR**4.+5.207e+02*CSR**3.-3.939e+01*CSR**2.+1.891e+00*CSR+8e-03
+            else:
+                CSR = 1.973*CSR**4.-2.481*CSR**3.+0.607*CSR**2.+1.151*CSR-0.020
+        # Buie Sunshape parameters:
+        kappa = 0.9*N.log(13.5*CSR)*CSR**(-0.3)
+        gamma = 2.2*N.log(0.52*CSR)*CSR**(0.43)-0.1
+        integ_phi_csr = 1e-6*N.exp(kappa)/(gamma+2.)*((theta_tot*1000.)**(gamma+2.)-(theta_dni*1000.)**(gamma+2.))
+        integ_phi = N.sum(integ_phi_dni)+integ_phi_csr
 
-    theta = []
-    # Step 2: random declaration slice by slice according to the Buie sunshape:
-    for i in xrange(len(theta_dni_int)-1):
-        theta.append(N.random.uniform(low=theta_dni_int[i], high=theta_dni_int[i+1], size=N.round(integ_phi_dni[i]/integ_phi*num_rays)))
-    if CSR != 0.:
-        for i in xrange(len(theta_csr_int)-1):
-            theta.append(N.random.uniform(low=theta_csr_int[i], high=theta_csr_int[i+1], size=N.round(integ_phi_csr[i]/integ_phi*num_rays)))
-    theta= N.hstack(theta)
-    # re-arange if rounding of the number of rays per interval gives too much or not enough rays in total.
-    if len(theta) < num_rays:
-        theta = N.hstack((theta,N.random.uniform(low=N.sin(0.), high=N.sin(theta_tot), size=num_rays-len(theta))))
-    if len(theta) > num_rays:
-        theta = theta[:num_rays]
-       
+    # Step 2: PDF and random variate declaration
+    integ_pdf_dni = integ_phi_dni/integ_phi
+    R_thetas = N.random.uniform(size=num_rays)
+
+    # Step 3: polar angle determination: 
+    aureole = R_thetas>=N.sum(integ_pdf_dni)
+    for i in xrange(len(integ_pdf_dni)-1):
+        dni_slice = N.logical_and((R_thetas >= N.sum(integ_pdf_dni[:i])), (R_thetas < N.sum(integ_pdf_dni[:i+1])))
+        thetas[dni_slice] = theta_int[i]/1000.+N.random.uniform(size=N.sum(dni_slice))*theta_dni/400.
+
+    if CSR>0.:
+        thetas[aureole] = ((R_thetas[aureole]-1.)*((gamma+2.)/(10.**(3.*gamma)*N.exp(kappa))*N.sum(integ_phi_dni)-theta_dni**(gamma+2.))+R_thetas[aureole]*theta_tot**(gamma+2.))**(1./(gamma+2.))
 
     # Generate directions:
     xi1 = random.uniform(high=2.*N.pi, size=num_rays)
-    sin_th = N.sin(N.hstack(theta))
-    a = N.vstack((N.cos(xi1)*sin_th, N.sin(xi1)*sin_th , N.cos(theta)))
-
-    # Identify dni and aureole cases:
-    dni = theta <= theta_dni
-    aureole = ~dni
+    sin_th = N.sin(N.hstack(thetas))
+    a = N.vstack((N.cos(xi1)*sin_th, N.sin(xi1)*sin_th , N.cos(thetas)))
 
     # Rotate to a frame in which <direction> is Z:
     perp_rot = rotation_to_z(direction)
@@ -309,7 +302,6 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None):
     vertices_global = N.dot(perp_rot, vertices_local)
     
     rayb = RayBundle(vertices = vertices_global+center, directions = directions, energy = energy)
-    csr_calc = N.sum(energy[aureole])/N.sum(energy)
 
     return rayb
 
@@ -360,10 +352,7 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, flux=None , ra
     r0 = float(r0)
     r1 = float(r1)
     depth = float(depth)
-    if r0>r1:
-         raise AttributeError('wrong radii') 
-    if depth <0.:
-         raise AttributeError('wrong depth')
+
     num_rays = float(num_rays)
 
     dir_flat = pillbox_sunshape_directions(num_rays, angular_range)
@@ -372,7 +361,10 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, flux=None , ra
 
     R = random.uniform(size=num_rays)
 
-    zs = (-r0+N.sqrt(r0**2.+R*(r1**2.-r0**2.)))/c
+    if r0<r1:
+        zs = depth*N.sqrt(R)
+    else:
+        zs = depth*(1.-N.sqrt(R))
 
     phi_s = random.uniform(low=angular_span[0], high=angular_span[1], size=num_rays)
     rs = r0+c*zs

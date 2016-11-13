@@ -44,8 +44,6 @@ class RTVF():
 		2. The combination rule; taking as arbitrary average 0 in the standard deviation formula.
 		Afterwards both standard deviation matrices are tested on the maximum self.precision value and the result is inserted in the progress matrix used in the while loop for each geometry. This progress matrix shuts off the raytrace on elements that already hit their precision target in order to speed up teh calculation. A minimum number of iterations is set in order to avoid unlucky breacks at the start of the routine due to statistical bias on low number of passes.
 		'''
-		old_VF_esperance = copy(self.VF_esperance)
-		#AiFij_old = old_VF_esperance*N.ones(N.shape(self.VF_esperance))*N.vstack(self.areas)
 
 		r = N.vstack(self.ray_counts)
 		p = N.vstack(self.p)
@@ -53,87 +51,41 @@ class RTVF():
 
 		# Summation rule enforced:
 		Ai = N.ones(N.shape(self.VF_esperance))*N.vstack(self.areas)
-		self.VF_esperance = (self.VF_esperance*p_1+self.VF*r)/p
-
-		'''
-		recip = N.abs(self.VF_esperance-(self.VF_esperance*Ai).T/Ai)
-		bad = recip > self.precision
-		# Reciprocity rule enforced
-		if N.isinf(self.stdev).any():
-			self.VF_esperance[bad] = ((self.VF_esperance+(self.VF_esperance*Ai).T/Ai)/2.)[bad] # This is enforcing the reciprocity rule at each stage. We now only need to check for the summation rule and the standard deviation in the tests.
-		else:
-			self.VF_esperance[bad] = ((self.stdev.T*self.VF_esperance+self.stdev*(self.VF_esperance*Ai).T/Ai)/(self.stdev+self.stdev.T))[bad]
-		'''
-		AiFij = self.VF_esperance*Ai
-		AjFji = AiFij.T
 
 		# Online weighted standard deviation calculation
-		self.Qsum = self.Qsum + r*p_1/p*(self.VF_esperance-old_VF_esperance)**2.
+		self.Qsum = self.Qsum + r*p_1/p*(self.VF-self.VF_esperance)**2.
+		self.VF_esperance = (self.VF_esperance*p_1+self.VF*r)/p
+		AiFij = self.VF_esperance*Ai
+		AjFji = AiFij.T
 		self.stdev_VF = N.sqrt(self.Qsum/p_1)
 
 		# Evaluation of the relative precision of the evaluation
-		stdev_test = (self.stdev_VF <= (self.precision/3.)).all(axis=1) # absolute precision on the VFs
+		stdev_test = ((self.stdev_VF/N.sqrt(p/r)) <= (self.precision/3.)).all(axis=1) # absolute precision on the VFs
+		#stdev_test = (self.stdev_VF/self.VF_esperance <= (self.precision/3.)).all(axis=1) # relative precision on the VFs
 		# Reciprocity rule
-		self.VF_reciprocity = (AiFij-AjFji)
+		self.VF_reciprocity = (AiFij-AjFji)/2.
 		reciprocity_test = (N.abs(self.VF_reciprocity) <= self.precision).all(axis=1) # for absolute precision
 		# Summation rule
-		summ_test = N.abs(N.sum(self.VF_esperance, axis=1)-1.) < self.precision[3,3]
+		summ_test = N.abs(N.sum(self.VF_esperance, axis=1)-1.) < self.precision
 
 		# Minimum precision condition for surfaces with negligible contribution: (this is to speed up the process when some surfaces have a small surface and a very small view factor to another one)
 		#minimum_VF_test = AiFij < self.precision 
 
 		# Simulation progress switch to determine which surfaces need to cast more rays
-		#self.progress = N.logical_not(N.logical_and(summ_test, N.logical_and(stdev_test, reciprocity_test)))
-		self.progress = N.logical_not(N.logical_and(summ_test, stdev_test))
+		self.progress = N.logical_not(N.logical_and(summ_test, N.logical_and(stdev_test, reciprocity_test)))
+		#self.progress = N.logical_not(N.logical_and(summ_test, stdev_test))
 
-		'''
-		# Convergence matrix:
-		Ns = self.VF.shape[0]
-		A = N.zeros((2.*Ns*Ns,2.*Ns*Ns))
-		B = N.zeros(Ns*Ns*2)
-		# Build A:
-		# Summation rule:
-		for i in xrange(Ns):
-			A[i,i*Ns:(i+1)*Ns] = N.ones(Ns)
-		# Estimation data:
-		for i in xrange(Ns):
-			A[Ns+i,i] = 1.
-			A[Ns+i,i+Ns] = -1.
-		# Reciprocity rule:
-		for i in xrange(Ns):#Ns*(Ns-1)/2):
-			for j in xrange(Ns):
-				if j > i:
-					A[Ns+Ns+i*Ns, i*Ns+j] = self.areas[i]
-					A[Ns+Ns+i*Ns, j*Ns+i] = -self.areas[j]
-		# Build B:
-		B[:Ns] = N.ones(Ns)
-		B[Ns:Ns+Ns*Ns] = N.hstack(self.VF_esperance)
-		B[Ns+Ns*Ns:Ns+Ns*Ns+Ns*(Ns-1)/2] = N.zeros(Ns*(Ns-1)/2)
-		rec = self.VF_esperance-AjFji/Ai
-		B[] = rec[]
-		# Matrix inversion:
-		X = N.linalg.solve(A,B)
-		VFs = X[:Ns]
-		self.VF_esperance = VFs.reshape((Ns,Ns))
 		#'''
-
-		'''
-		# Online weighted standard deviation calculation
-		self.Qsum = self.Qsum + r*p_1/p*(AiFij-AiFij_old)**2.
-		self.stdev_VFA = N.sqrt(self.Qsum/p_1)
-
-		# Evaluation of the relative precision of the evaluation
-		stdev_test = self.stdev_VFA <= (self.precision*N.ones(N.shape(self.VF_esperance))*N.vstack(self.areas)/3.)
-		'''
-		'''
 		if self.progress.any():
 			print N.hstack(N.argwhere(self.progress))
 		N.set_printoptions(suppress = True)
+		print 'VF_esperance'
+		print N.round(self.VF_esperance, decimals=4)
 		print 'stdev/3'
-		print N.round(self.stdev_VF*3., decimals=4)
-		print 'reciprocity'
+		print N.round(self.stdev_VF*3./N.sqrt(self.p/self.ray_counts), decimals=4)
+		print 'Reciprocity'
 		print N.round(self.VF_reciprocity, decimals=4)
-		print 'summation'
+		print 'Summation'
 		print N.abs(N.sum(self.VF_esperance, axis=1))
 		#'''
 		'''
@@ -141,19 +93,28 @@ class RTVF():
 			print N.hstack(N.argwhere(self.progress))
 		plt.subplots_adjust(bottom=0.15)
 		plt.subplot(131)
-		plt.scatter(N.vstack(self.p)*N.ones(N.shape(self.stdev_VF)), 3.*self.stdev_VF)
-		plt.axhline(self.precision[0,3])
+		plt.scatter(N.vstack(self.p)*N.ones(N.shape(self.stdev_VF)), 3.*self.stdev_VF/N.sqrt(self.p/self.ray_counts))
+		plt.axhline(self.precision)
 		plt.xlabel('Standard deviation')
 		plt.subplot(132)
 		plt.scatter(N.vstack(self.p), N.abs(N.sum(self.VF_esperance, axis=1)-1.))
 		plt.xlabel('Summation rule')
-		plt.axhline(self.precision[0,3])
+		plt.axhline(self.precision)
 		plt.subplot(133)
-		plt.axhline(self.precision[0,3])
-		plt.scatter(N.vstack(self.p)*N.ones(N.shape(self.VF_reciprocity)), N.abs(self.VF_reciprocity/(AiFij+AjFji)/2.))
+		plt.axhline(self.precision)
+		plt.scatter(N.vstack(self.p)*N.ones(N.shape(self.VF_reciprocity)), N.abs(self.VF_reciprocity))
 		plt.xlabel('Reciprocity rule')
 
-		plt.savefig(open('/home/charles-alexis/Documents/Boulot/SolarPACES2016/VF_convergence.png','w'))
+		plt.savefig(open('/home/charles/Documents/Tracer/emissive_losses/test.png','w'))
+		#'''
+
+		'''
+		plt.scatter(N.vstack(self.p)*N.ones(N.shape(self.stdev_VF)), self.VF_esperance, marker='+', zorder=10)
+		#plt.scatter(N.vstack(self.p)*N.ones(N.shape(self.stdev_VF)), self.VF_esperance-3.*self.stdev_VF, marker='+', color='k')
+		#plt.scatter(N.vstack(self.p)*N.ones(N.shape(self.stdev_VF)), self.VF_esperance+3.*self.stdev_VF, marker='+', color='k')
+		plt.scatter(N.vstack(self.p)*N.ones(N.shape(self.stdev_VF)), self.VF, marker='+', color='k')
+
+		plt.savefig(open('/home/charles/Documents/Tracer/emissive_losses/test.png','w'))
 		#'''
 
 class FONaR_RTVF(RTVF):
@@ -474,7 +435,7 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 
 		vf_tracer = TracerEngineMP(A)
 		vf_tracer.itmax = 1 # stop iteration after this many ray bundles were generated (i.e. after the original rays intersected some surface this many times).
-		vf_tracer.minener = 1e-15 # minimum energy threshold
+		vf_tracer.minener = 1e-10 # minimum energy threshold
 		stable_stats = 0
 		while (self.progress==True).any() or stable_stats<3:
 
@@ -487,6 +448,9 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 					SA.append(solar_disk_bundle(self.ray_counts[0]/procs, center=N.vstack([0,0,0]), direction=N.array([0,0,1]), radius=apertureRadius, ang_range=N.pi/2., flux=1./(N.pi*self.apertureRadius**2.)/procs))
 
 				vf_tracer.multi_ray_sim(SA, procs = procs)
+
+				#view = Renderer(vf_tracer)
+				#view.show_rays()
 				self.A = vf_tracer._asm #due to multiprocessing inheritance break
 				self.alloc_VF(0)
 
@@ -498,7 +462,6 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 					depth = frustaDepths[0]/el_FRUs[0]
 					num_rays = self.ray_counts[elf+1]
 					rays_in = True
-
 					S = []
 					for p in xrange(procs):
 						S.append(self.gen_source(num_rays/procs, r0, r1, depth, center, rays_in, procs=procs))
@@ -526,6 +489,9 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 						for p in xrange(procs):
 							S.append(self.gen_source(num_rays/procs, r0, r1, depth, center, rays_in, procs=procs))
 						vf_tracer.multi_ray_sim(S, procs=procs)
+						#view = Renderer(vf_tracer)
+						#view.show_rays()
+
 						self.A = vf_tracer._asm #due to multiprocessing inheritance break
 
 						self.alloc_VF(1+N.sum(el_FRUs[:n+1])-el_FRUs[n]+elf)
@@ -545,8 +511,7 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 					vf_tracer.multi_ray_sim(S, procs=procs)
 
 					self.A = vf_tracer._asm #due to multiprocessing inheritance break
-					#view = Renderer(vf_tracer)
-					#view.show_rays()
+
 					self.alloc_VF(N.sum(el_FRUs)+elc+1)
 
 
@@ -580,7 +545,7 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 		if r0==r1:
 			S = vf_cylinder_bundle(num_rays=num_rays, rc=r0, lc=depth, center=center, direction=N.array([0,0,1]), rays_in=rays_in, procs=procs)
 		elif depth==0.:
-			S = solar_disk_bundle(num_rays=num_rays, center=center, direction=N.array([0,0,N.sign(r1-r0)]), radius=r0, ang_range=N.pi/2., flux=1./(N.pi*N.abs(r0**2-r1**2)/procs), radius_in=r1)
+			S = solar_disk_bundle(num_rays=num_rays, center=center, direction=N.array([0,0,N.sign(r1-r0)]), radius=r0, ang_range=N.pi/2., radius_in=r1, procs=procs)
 		else:
 			S = vf_frustum_bundle(num_rays=num_rays, r0=r0, r1=r1, depth=depth, center=center, direction=N.array([0,0,1]), rays_in=rays_in, procs=procs)
 
@@ -598,47 +563,70 @@ class Two_N_parameters_cavity_RTVF(RTVF):
 		el_CON = self.el_CON
 
 		# Gather hits and absorbed radiative power
-
 		self.AP = self.A.get_objects()[0]
 		self.FRU = self.A.get_objects()[1:N.sum(len(el_FRUs))+1]
 		self.CON = self.A.get_objects()[N.sum(len(el_FRUs))+1:]
 
 		Aperture_abs, Aperture_hits = self.AP.get_surfaces()[0].get_optics_manager().get_all_hits()
+		'''
 		Frustum_abs = []
 		Frustum_hits = []
 		for i in xrange(len(el_FRUs)):
 			Fru_abs, Fru_hits = self.FRU[i].get_surfaces()[0].get_optics_manager().get_all_hits()
 			Frustum_abs.append(N.asarray(Fru_abs))
 			Frustum_hits.append(N.asarray(Fru_hits))
-		for i in xrange(len(el_CON)):
-			Cone_abs, Cone_hits = self.CON[i].get_surfaces()[0].get_optics_manager().get_all_hits()
+		'''
+		Cone_abs, Cone_hits = self.CON[0].get_surfaces()[0].get_optics_manager().get_all_hits()
 
-		# VF allocation to a nxn VF matrix. Convention is to go from the aperture to the back of the shape following the axi-symmetric profile line. First loop is for gemoetrical shapes and second one for the discretisation of each shape.
+		heights = N.add.accumulate(N.hstack([0, frustaDepths]))
+		rads = N.hstack([apertureRadius, frustaRadii])
+
+
+		# VF allocation to a nxn VF matrix. Convention is to go from the aperture to the back of the shape following the axi-symmetric profile line. First loop is for geometrical shapes and second one for the discretisation of each shape.
 		for j in xrange(len(el_FRUs)+2):
 
 			if j == 0:
 				self.VF[n,j] = N.sum(Aperture_abs)
 
 			elif j <= len(el_FRUs):
+				Fru_abs, Fru_hits = self.FRU[j-1].get_surfaces()[0].get_optics_manager().get_all_hits()
+				fru_hits_r = N.around(N.sqrt(Fru_hits[0]**2.+Fru_hits[1]**2.), decimals=9)
+				fru_hits_h = N.around(Fru_hits[2], decimals=9)
+
 				for i in xrange(int(el_FRUs[j-1])):
-					frustum_el_base = N.sum(frustaDepths[:j])-frustaDepths[j-1]+i*frustaDepths[j-1]/el_FRUs[j-1]
-					frustum_el_top = N.sum(frustaDepths[:j])-frustaDepths[j-1]+(i+1)*frustaDepths[j-1]/el_FRUs[j-1]
-					if frustaDepths[j-1]<0.:
-						frustum_el_base, frustum_el_top = frustum_el_top, frustum_el_base
-					in_frustum_el = N.logical_and(Frustum_hits[j-1][2]>=frustum_el_base, Frustum_hits[j-1][2]<frustum_el_top)
-					self.VF[n,i+1+N.sum(el_FRUs[:j])-el_FRUs[j-1]] = N.sum(Frustum_abs[j-1][in_frustum_el])
+					#frustum_el_base = N.sum(frustaDepths[:j])-frustaDepths[j-1]+i*frustaDepths[j-1]/el_FRUs[j-1]
+					#frustum_el_top = N.sum(frustaDepths[:j])-frustaDepths[j-1]+(i+1)*frustaDepths[j-1]/el_FRUs[j-1]
+
+					frustum_h_base = heights[j-1]+i*(heights[j]-heights[j-1])/el_FRUs[j-1]
+					frustum_h_top = heights[j-1]+(i+1)*(heights[j]-heights[j-1])/el_FRUs[j-1]
+
+					frustum_r_min = rads[j-1]+i*(rads[j]-rads[j-1])/el_FRUs[j-1]
+					frustum_r_max = rads[j-1]+(i+1)*(rads[j]-rads[j-1])/el_FRUs[j-1]
+
+					if frustum_h_base>frustum_h_top:
+						frustum_h_base, frustum_h_top = frustum_h_top, frustum_h_base
+					if frustum_r_min>frustum_r_max:
+						frustum_r_min, frustum_r_max = frustum_r_max, frustum_r_min		
+
+					#print frustum_h_base, frustum_h_top, frustum_r_base, frustum_r_top
+					in_frustum_el_h = N.logical_and(fru_hits_h>=frustum_h_base, fru_hits_h<=frustum_h_top)
+					in_frustum_el_r = N.logical_and(fru_hits_r>=frustum_r_min, fru_hits_r<=frustum_r_max)
+					
+					in_frustum_el = N.logical_and(in_frustum_el_h, in_frustum_el_r)
+
+					self.VF[n,i+1+N.sum(el_FRUs[:j])-el_FRUs[j-1]] = N.sum(Fru_abs[in_frustum_el])
 
 			else:
 				for i in xrange(int(el_CON)):
 
-					r1 = frustaRadii[-1]-i*frustaRadii[-1]/el_CON
-					r2 = frustaRadii[-1]-(i+1)*frustaRadii[-1]/el_CON
+					r1 = frustaRadii[-1]-i*frustaRadii[-1]/float(el_CON)
+					r2 = frustaRadii[-1]-(i+1)*frustaRadii[-1]/float(el_CON)
 
 					cone_hits_radii = N.sqrt(Cone_hits[0]**2+Cone_hits[1]**2)
 					in_cone_el = N.logical_and(cone_hits_radii<r1, cone_hits_radii>=r2)
 		
 					self.VF[n,i+1+N.sum(el_FRUs)] = N.sum(Cone_abs[in_cone_el])
-
+		
 		self.reset_opt()
 
 
