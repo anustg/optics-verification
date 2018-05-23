@@ -5,6 +5,12 @@ rays expected from that source.
 
 References:
 .. [1] Monte Carlo Ray Tracing, Siggraph 2003 Course 44
+
+
+Ye changed def(solar_rect_bundel)
+Line189 vertices_local = N.vstack((ys, xs, N.zeros(num_rays)))
+to      vertices_local = N.vstack((xs, ys, N.zeros(num_rays)))
+28 Oct 2016
 """
 
 from numpy import random, linalg as LA
@@ -180,7 +186,7 @@ def solar_rect_bundle(num_rays, center, direction, x, y, ang_range, flux=None):
         xs, ys = ys, xs
 
     # Rotate locations to the plane defined by <direction>:
-    vertices_local = N.vstack((ys, xs, N.zeros(num_rays)))
+    vertices_local = N.vstack((xs, ys, N.zeros(num_rays)))
     vertices_global = N.dot(perp_rot, vertices_local)
 
     rayb = RayBundle(vertices=vertices_global + center, directions=directions)
@@ -305,6 +311,7 @@ def buie_sunshape(num_rays, center, direction, radius, CSR, flux=None, pre_proce
 
     return rayb
 
+
 def square_bundle(num_rays, center, direction, width):
     """
     Generate a ray bundles whose rays are equally spaced along a square grid,
@@ -321,8 +328,8 @@ def square_bundle(num_rays, center, direction, width):
     """
     rot = rotation_to_z(direction)
     directions = N.tile(direction[:,None], (1, num_rays))
-    range = N.s_[-width:width:float(2*width)/N.sqrt(num_rays)]
-    xs, ys = N.mgrid[range, range]
+    range1 = N.s_[-width:width:float(2*width)/N.sqrt(num_rays)]
+    xs, ys = N.mgrid[range1, range1]
     vertices_local = N.array([xs.flatten(),  ys.flatten(),  N.zeros(len(xs.flatten()))])
     vertices_global = N.dot(rot,  vertices_local)
 
@@ -352,7 +359,10 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, flux=None , ra
     r0 = float(r0)
     r1 = float(r1)
     depth = float(depth)
-
+    if r0>r1:
+         raise AttributeError('wrong radii') 
+    if depth <0.:
+         raise AttributeError('wrong depth')
     num_rays = float(num_rays)
 
     dir_flat = pillbox_sunshape_directions(num_rays, angular_range)
@@ -361,10 +371,7 @@ def vf_frustum_bundle(num_rays, r0, r1, depth, center, direction, flux=None , ra
 
     R = random.uniform(size=num_rays)
 
-    if r0<r1:
-        zs = depth*N.sqrt(R)
-    else:
-        zs = depth*(1.-N.sqrt(R))
+    zs = (-r0+N.sqrt(r0**2.+R*(r1**2.-r0**2.)))/c
 
     phi_s = random.uniform(low=angular_span[0], high=angular_span[1], size=num_rays)
     rs = r0+c*zs

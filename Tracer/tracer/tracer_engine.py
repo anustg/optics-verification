@@ -43,6 +43,9 @@ class TracerEngine():
             by surface i
         """
         ret_shape = (len(surfaces), bundle.get_num_rays())
+        #print ''
+        #print 'ret_shape', ret_shape
+        #print ''
         stack = N.zeros(ret_shape)
         owned_rays = N.empty(ret_shape, dtype=N.bool)
         
@@ -142,7 +145,9 @@ class TracerEngine():
                 surfaces[surf_idx].select_rays(N.nonzero(inters)[0])
                 new_outg = surfaces[surf_idx].get_outgoing()
                 new_record = new_outg
-                
+                #print 'surface index', surf_idx
+                #print 'nonzero[0]',N.nonzero(inters[0])
+                #print 'nonzero',N.nonzero(inters)                
                 # Fix parent indexing to refer to the full original bundle:
                 parents = N.nonzero(owned_rays[surf_idx])[0][new_outg.get_parents()]
                 new_outg.set_parents(parents)

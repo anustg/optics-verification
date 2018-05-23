@@ -26,7 +26,7 @@ class InfiniteCylinder(QuadricGM):
         local_norm /= N.sqrt(N.sum(hit[:2]**2, axis=0))
         
         # Choose whether the normal is inside or outside:
-        local_norm[:, N.sum(local_norm[:2] * dir_loc[:2], axis=0) > 1e-9] *= -1
+        local_norm[:, N.sum(local_norm[:2] * dir_loc[:2], axis=0) > 1e-10] *= -1
         
         # Back to global coordinates:
         return N.dot(self._working_frame[:3,:3], local_norm)

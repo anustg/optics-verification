@@ -31,6 +31,8 @@ class Reflective(object):
     def reset(self):
         pass
 
+perfect_mirror = Reflective(0)
+
 class RealReflective(object):
     '''
     Generates a function that represents the optics of an opaque absorptive surface with specular reflections and realistic surface slope error. The surface slope error is considered equal in both x and y directions. The consequent distribution of standard deviation is described by a radial bivariate normal distribution law.
@@ -42,27 +44,132 @@ class RealReflective(object):
     Returns:
     Reflective - a function with the signature required by surface
     '''
-    def __init__(self, absorptivity, sigma_xy):
+    def __init__(self, absorptivity, sigma_xy,slope):
         self._abs = absorptivity
         self._sig = sigma_xy
+        self._slope=slope
 
     def __call__(self, geometry, rays, selector):
         ideal_normals = geometry.get_normals()
 
         # Creates projection of error_normal on the surface (sin can be avoided because of very small angles).
-        normal_errors_x = N.sin(N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1])))
-        normal_errors_y = N.sin(N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1])))
-        normal_errors_z = N.ones(N.shape(ideal_normals[1])) #N.zeros(N.shape(ideal_normals[1]))
-        normal_errors = N.vstack((normal_errors_x, normal_errors_y, normal_errors_z))
 
+
+        #------------------------------
+        #          pill box
+        #------------------------------
+        if self._slope=='pillbox_angles':
+            err_theta=N.random.uniform(low=0.,high=self._sig, size=N.shape(ideal_normals[1]))
+            err_phi=N.random.uniform(low=0.,high=2.*N.pi, size=N.shape(ideal_normals[1]))
+
+            normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
+            normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
+            normal_errors_z=N.cos(err_theta)
+
+        if self._slope=='pillbox_sphere':
+            a1=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
+            a2=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
+
+            err_phi=2.*N.pi*a1
+            err_theta=N.arccos(1.-a2*(1.-N.cos(self._sig)))
+
+
+            normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
+            normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
+            normal_errors_z=N.cos(err_theta)
+
+
+        if self._slope=='pillbox_distance':            
+            err_xz=N.random.uniform(low=-self._sig,high=self._sig, size=N.shape(ideal_normals[1]))
+            err_yz=N.random.uniform(low=-self._sig,high=self._sig, size=N.shape(ideal_normals[1]))
+        
+            normal_errors_x=err_xz
+            normal_errors_y=err_yz
+            normal_errors_z=N.ones(N.shape(ideal_normals[1]))
+   
+
+        #------------------------------
+        #          normal 
+        #------------------------------
+        if self._slope=='normal_angles':
+            #err_theta=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
+            theta=N.linspace(0.,4.*self._sig,1000)
+            cdf=N.array(())
+            for i in xrange(len(theta)-1):
+                dt=N.linspace(theta[i],theta[i+1],500)
+                pdf=1./N.sqrt(2.*N.pi)/self._sig*N.exp(-dt**2/2./self._sig**2)
+                integral=N.trapz(pdf,dt) 
+                cdf=N.append(cdf,N.sum(integral)/0.5)
+            num= len(ideal_normals[1])
+            err_theta=N.array(())
+            for i in xrange(len(theta)-1):
+                err_theta=N.append(err_theta,N.random.uniform(low=theta[i],high=theta[i+1],size=N.round(cdf[i]*num)))
+
+
+            if len(err_theta) < num:
+                err_theta = N.hstack((err_theta,N.random.uniform(low=0., high=4.*self._sig, size=num-len(err_theta))))
+            if len(err_theta) > num:
+                err_theta = err_theta[:num]
+
+
+            err_phi=N.random.uniform(low=0.,high=2.*N.pi, size=N.shape(ideal_normals[1]))
+
+            normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
+            normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
+            normal_errors_z=N.cos(err_theta)
+ 
+
+        if self._slope=='normal_sphere':
+            a1=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
+            a2=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
+
+            err_phi=2.*N.pi*a1
+            err_theta=N.arcsin(N.sqrt(-2.*self._sig**2*N.log(a2)))
+
+
+            normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
+            normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
+            normal_errors_z=N.cos(err_theta)
+
+        if self._slope=='normal_polar':
+
+
+            err_phi= N.random.uniform(low=0., high=N.pi, size=N.shape(ideal_normals[1]))
+            err_theta=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
+
+
+            normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
+            normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
+            normal_errors_z=N.cos(err_theta)
+            print '******normal polar slope error **********'    
+
+
+        #------------------------------
+        #       normal simplified
+        #------------------------------
+        if self._slope=='normal_distance':
+            err_xz=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
+            err_yz=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
+        
+            normal_errors_x=err_xz
+            normal_errors_y=err_yz
+            normal_errors_z=N.ones(N.shape(ideal_normals[1]))
+
+
+        normal_errors = N.vstack((normal_errors_x, normal_errors_y, normal_errors_z)) 
+
+        
         # Determine rotation matrices for each normal:
         rots_norms = rotation_to_z(ideal_normals.T)
+        if rots_norms.ndim==2:
+            rots_norms=[rots_norms]
 
         # Build the normal_error vectors in the local frame.
         real_normals = N.zeros(N.shape(ideal_normals))
 
         for i in xrange(N.shape(real_normals)[1]):
             real_normals[:,i] = N.dot(rots_norms[i], normal_errors[:,i])
+
 
         #normal_errors = N.dot(geometry._working_frame[:3,:3], N.vstack((normal_errors_x, normal_errors_y, normal_errors_z)))
         #real_normals = ideal_normals + normal_errors
@@ -79,58 +186,14 @@ class RealReflective(object):
     def reset(self):
         pass
 
-
-
-    '''
-    Generates a function that represents the optics of an opaque absorptive surface with specular reflections and realistic surface slope error. The surface slope error is considered equal in both x and y directions. The consequent distribution of standard deviation is described by a radial bivariate normal distribution law.
-
-    Arguments:
-    absorptivity - the amount of energy absorbed before reflection
-    sigma_xy - Standard deviation of the reflected ray in the local x and y directions. 
-    
-    Returns:
-    Reflective - a function with the signature required by surface
-   
-    def __init__(self, absorptivity, sigma):
-        self._abs = absorptivity
-        self._sig = sigma
-
-    def __call__(self, geometry, rays, selector):
-        ideal_normals = geometry.get_normals()
-        # Creates projection of error_normal on the surface (sin can be avoided because of very small angles).
-        phis = 2.*N.pi*N.random.uniform(size=N.shape(ideal_normals[1]))
-        thetas = N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
-        normal_errors_x = N.cos(phis)*N.sin(thetas)
-        normal_errors_y = N.sin(phis)*N.sin(thetas)
-        normal_errors_z = N.cos(thetas)
-
-        normal_errors = N.vstack((normal_errors_x, normal_errors_y, normal_errors_z))
-        # Determine rotation matrices for each normal:
-        rots_norms = rotation_to_z(ideal_normals.T)
-        # Build the normal_error vectors in the local frame.
-        real_normals = N.zeros(N.shape(ideal_normals))
-        for i in xrange(N.shape(real_normals)[1]):
-            real_normals[:,i] = N.dot(rots_norms[i], normal_errors[:,i])
-        real_normals_unit = real_normals/N.sqrt(N.sum(real_normals**2, axis=0))
-        # Call reflective optics with the new set of normals to get reflections affected by 
-        # shape error.
-        outg = rays.inherit(selector,
-            vertices = geometry.get_intersection_points_global(),
-            direction = optics.reflections(rays.get_directions()[:,selector], real_normals_unit),
-            energy = rays.get_energy()[selector]*(1 - self._abs),
-            parents = selector)
-        return outg
-
-    def reset(self):
-        pass
-    '''
+                   
 
 class AbsorptionAccountant(object):
     """
     This optics manager remembers all of the locations where rays hit it
     in all iterations, and the energy absorbed from each ray.
     """
-    def __init__(self, real_optics, absorptivity, sigma_xy=None):
+    def __init__(self, real_optics, absorptivity, sigma_xy=None,shape=None):
         """
         Arguments:
         real_optics - the optics manager class to actually use. Expected to
@@ -142,7 +205,7 @@ class AbsorptionAccountant(object):
         if sigma_xy==None:
             self._opt = real_optics(absorptivity)
         else:
-            self._opt = real_optics(absorptivity, sigma_xy)
+            self._opt = real_optics(absorptivity, sigma_xy,shape)
         self.reset()
     
     def reset(self):
@@ -174,7 +237,7 @@ class DirectionAccountant(AbsorptionAccountant):
     This optics manager remembers all of the locations where rays hit it
     in all iterations, and the energy absorbed from each ray.
     """
-    def __init__(self, real_optics, absorptivity, sigma_xy=None):
+    def __init__(self, real_optics, absorptivity, sigma_xy=None,shape=None):
         """
         Arguments:
         real_optics - the optics manager class to actually use. Expected to
@@ -183,7 +246,7 @@ class DirectionAccountant(AbsorptionAccountant):
             LambertianReflector below).
         absorptivity - to be passed to a new real_optics object.
         """
-        AbsorptionAccountant.__init__(self, real_optics, absorptivity, sigma_xy)
+        AbsorptionAccountant.__init__(self, real_optics, absorptivity, sigma_xy,shape)
     
     def reset(self):
         """Clear the memory of hits (best done before a new trace)."""
@@ -234,13 +297,13 @@ class RealReflectiveReceiver_OneSide(AbsorptionAccountant):
 
 class RealReflectiveDetector(DirectionAccountant):
     """A wrapper around DirectionAccountant with a RealReflective optics"""
-    def __init__(self, absorptivity=0, sigma_xy=0):
+    def __init__(self, absorptivity=0, sigma_xy=0,shape=None):
         DirectionAccountant.__init__(self, RealReflective, absorptivity, sigma_xy)
 
 class RealReflectiveDetector_OneSide(DirectionAccountant):
     """A wrapper around DirectionAccountant with a RealReflective_OneSide optics"""
-    def __init__(self, absorptivity=0, sigma_xy=0):
-        DirectionAccountant.__init__(self, RealReflective_OneSide, absorptivity, sigma_xy)
+    def __init__(self, absorptivity=0, sigma_xy=0,shape=None):
+        DirectionAccountant.__init__(self, RealReflective_OneSide, absorptivity, sigma_xy,shape)
         
 class AbsorberReflector(Reflective):
     """

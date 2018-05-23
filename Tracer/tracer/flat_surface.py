@@ -30,28 +30,33 @@ class FlatGeometryManager(GeometryManager):
         """
         GeometryManager.find_intersections(self, frame, ray_bundle)
         
+
+        #print 'ffffframe', frame
         d = ray_bundle.get_directions()
         v = ray_bundle.get_vertices() - frame[:3,3][:,None]
         n = ray_bundle.get_num_rays()
         
         # Vet out parallel rays:
         dt = N.dot(d.T, frame[:3,2])
-        unparallel = abs(dt) > 1e-9
+        unparallel = abs(dt) > 1e-10
         
         # `params` holds the parametric location of intersections along the ray 
         params = N.empty(n)
         params.fill(N.inf)
+       # print 'uuuunparallele', unparallel
+       # print 'dt',dt[unparallel]
+        #print 'dt_parallll', dt[unparallel]
         
         vt = N.dot(frame[:3,2], v[:,unparallel])
         params[unparallel] = -vt/dt[unparallel]
         
         # Takes into account a negative depth
         # Note that only the 3rd row of params is relevant here!
-        negative = params < 0.
+        negative = params < 1e-10
         params[negative] = N.inf
         
         self._params = params
-        self._backside = dt > 0.
+        self._backside = dt > 1e-10
         return params
         
     def select_rays(self, idxs):
@@ -73,7 +78,8 @@ class FlatGeometryManager(GeometryManager):
         
         # Global coordinates on the surface:
         self._global = v + p[None,:]*d
-    
+   
+
     def get_normals(self):
         """
         Report the normal to the surface at the hit point of selected rays in
@@ -161,6 +167,7 @@ class FiniteFlatGM(FlatGeometryManager):
         self._idxs = idxs
         self._backside = N.nonzero(self._backside[idxs])[0]
         self._global = self._global[:,idxs].copy()
+       # print 'self.global,',self._global 
     
 class RectPlateGM(FiniteFlatGM):
     """

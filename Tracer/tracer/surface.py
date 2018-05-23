@@ -70,6 +70,7 @@ class Surface(HasFrame):
         """
         self._selected = idxs
         self._geom.select_rays(idxs)
+        #print 'self.selected,',self._selected
     
     def get_outgoing(self):
         """
@@ -81,6 +82,7 @@ class Surface(HasFrame):
         a RayBundle object with the new bundle, with vertices on the surface
             and directions according to optics laws.
         """
+
         return self._opt(self._geom, self._current_bundle, self._selected)
     
     def done(self):
