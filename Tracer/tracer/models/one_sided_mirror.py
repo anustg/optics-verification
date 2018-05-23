@@ -29,7 +29,7 @@ def surfaces_for_next_iteration(self, rays, surface_id):
 	"""
 	return N.zeros((len(self.surfaces), rays.get_num_rays()), dtype=N.bool)
 
-def rect_one_sided_mirror(width, height, absorptivity=0., sigma_xy=0., option=None, location=None, rotation=None):
+def rect_one_sided_mirror(width, height, absorptivity=0., sigma_xy=0.,shape=None, option=None, location=None, rotation=None):
 	"""
 	construct an object with two surfaces: one on the XY plane, that is
 	specularly reflective, and one slightly below (negative z), that is opaque.
@@ -41,11 +41,11 @@ def rect_one_sided_mirror(width, height, absorptivity=0., sigma_xy=0., option=No
 		not reflected back.
 	"""
 	if option=='fast':
-		surf = Surface(RectPlateGM(height, width), 
-		opt.RealReflective_OneSide(absorptivity, sigma_xy), location=location, rotation=rotation)
+		surf = Surface(RectPlateGM(width, height), 
+		opt.RealReflective_OneSide(absorptivity, sigma_xy,shape), location=location, rotation=rotation)
 	else:
-		surf = Surface(RectPlateGM(height, width), 
-		opt.RealReflectiveDetector_OneSide(absorptivity, sigma_xy), location=location, rotation=rotation)
+		surf = Surface(RectPlateGM(width, height), 
+		opt.RealReflectiveDetector_OneSide(absorptivity, sigma_xy,shape), location=location, rotation=rotation)
 
 	obj = AssembledObject(surfs=[surf])
 	obj.surfaces_for_next_iteration = types.MethodType(
@@ -54,20 +54,40 @@ def rect_one_sided_mirror(width, height, absorptivity=0., sigma_xy=0., option=No
 
 
 
-def rect_para_one_sided_mirror(width, height, focal_length, absorptivity=0., sigma_xy=1e-3, option=None, location=None, rotation=None):
+def rect_para_one_sided_mirror(width, height, focal_length, absorptivity=0., sigma_xy=1e-3, shape=None,option=None, location=None, rotation=None):
 
 	if option == 'fast':
 		surf = Surface(RectangularParabolicDishGM(width, height, focal_length),
-				   opt.RealReflective_OneSide(absorptivity, sigma_xy), location=location, rotation=rotation)
+				   opt.RealReflective_OneSide(absorptivity, sigma_xy,shape), location=location, rotation=rotation)
 	else:
 		surf = Surface(RectangularParabolicDishGM(width, height, focal_length),
-				   opt.RealReflectiveDetector_OneSide(absorptivity, sigma_xy), location=location, rotation=rotation)
+				   opt.RealReflectiveDetector_OneSide(absorptivity, sigma_xy,shape), location=location, rotation=rotation)
 
-	surf.set_location(surf.get_location()-N.array([0,0,(width/2.)**2.*surf.get_geometry_manager().a+(height/2.)**2.*surf.get_geometry_manager().b])) # to have the aperture as the reference.
+	#surf.set_location(surf.get_location()-N.array([0,0,(width/2.)**2.*surf.get_geometry_manager().a+(height/2.)**2.*surf.get_geometry_manager().b])) # to have the aperture as the reference.
 	obj = AssembledObject(surfs = [surf])
 	obj.surfaces_for_next_iteration = types.MethodType(
 		surfaces_for_next_iteration, obj, obj.__class__)
 	return obj
+
+
+def perfect_rect_para_one_sided_mirror(width, height, focal_length, absorptivity=0., option=None, location=None, rotation=None):
+
+	'''
+	Generate a perfect rectangular parabolic mirror (no slope error)
+	'''
+	if option == 'fast':
+		surf = Surface(RectangularParabolicDishGM(width, height, focal_length),
+				   opt.Reflective(absorptivity), location=location, rotation=rotation)
+	else:
+		surf = Surface(RectangularParabolicDishGM(width, height, focal_length),
+				   opt.Reflective(absorptivity), location=location, rotation=rotation)
+
+
+	obj = AssembledObject(surfs = [surf])
+	obj.surfaces_for_next_iteration = types.MethodType(
+		surfaces_for_next_iteration, obj, obj.__class__)
+	return obj
+
 
 def one_sided_receiver(width, height, absorptivity=1., location=None, rotation=None):
 	"""
