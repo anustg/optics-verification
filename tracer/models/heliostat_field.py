@@ -18,7 +18,7 @@ from numpy import r_
 import numpy as N
 import types
 import math 
-from ..CoIn_rendering.rendering_blades import *
+#from ..CoIn_rendering.rendering_blades import *
 
 from ..assembly import Assembly
 from ..spatial_geometry import rotx, roty, rotz
@@ -32,9 +32,9 @@ from .. import optics_callables as opt
 
 from .one_sided_mirror import rect_one_sided_mirror, rect_para_one_sided_mirror, perfect_rect_para_one_sided_mirror
 
-from ..package_dev.bladed_receiver import bladed_receiver
-from ..package_dev.bladed_receiver_tube import bladed_receiver_tube
-from ..package_dev.test_surface_reflection import receiver_test_refl
+#from ..package_dev.bladed_receiver import bladed_receiver
+#from ..package_dev.bladed_receiver_tube import bladed_receiver_tube
+#from ..package_dev.test_surface_reflection import receiver_test_refl
 
 
 class TowerScene(Assembly):
