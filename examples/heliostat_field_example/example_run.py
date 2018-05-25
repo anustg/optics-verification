@@ -33,18 +33,33 @@ class RayTracing:
         slope_type='normal_sphere' #'normal_sphere' or 'pillbox_sphere' or 'perfect'
         slope_error=1.64e-3 #rad (0 is a perfect mirror)
         curved=True # or False: flat mirror
-        oneMirror=True # or True: for simulating just one mirror
-        index=-1
-        if oneMirror:
-            index=2 # index of the position of the heliostats
-  
+        self.oneMirror=False # or True: for simulating just one mirror
+        hst_file='./examples/heliostat_field_example/hst_info.csv' #or None
+        #hst_file=None
 
-        heliostat=HeliostatGenerator(self.hst_w,self.hst_h,absorptivity=1.-reflectivity, sigma_xy=slope_error,slope=slope_type,curved=curved,one_mirror=oneMirror, index=index)
+
+        if self.oneMirror:
+            if hst_file!=None:
+                # index of the position of the heliostats
+                index=2 
+                pos=N.zeros(3)
+                foc=0. 
+            else:
+                # or hst_file=None,by putting the specific pos and focal
+                index=-1 #
+                pos=N.r_[0., 20., 0.] 
+                foc=30.   
+
+        else:
+            index=-1
+            pos=N.zeros(3)
+            foc=0. 
+  
+        heliostat=HeliostatGenerator(self.hst_w, self.hst_h, absorptivity=1.-reflectivity, sigma_xy=slope_error, slope=slope_type,curved=curved, one_mirror=self.oneMirror, index=index, pos=pos, foc=foc)
 
         # layout and field
-        hst_file='./examples/heliostat_field_example/hst_info.csv'
-        layout=KnownField(hst_file)
-        self.pos=layout.pos
+
+        layout=KnownField(hst_file,pos,foc)
 
         # tracking
         tracking_mode='TiltRoll' # 'AzEl'or 'TiltRoll'
@@ -75,37 +90,48 @@ class RayTracing:
         self.sun_vec=solar_vector(sun_az, sun_zenith)
 
 
-        tower_scene=TowerScene(self.sun_vec,oneMirror)
+        tower_scene=TowerScene(self.sun_vec, self.oneMirror)
         tower_scene(heliostat, layout, aiming_mode, tracking_mode,receiver,mount_rec)
 
         self.system=tower_scene.system
+        self.pos=heliostat.pos
+
 
     def gen_rays(self):
         #===================================================
-        t_pos = self.pos.T
-        xc_min = t_pos[0][N.argmin(t_pos[0])]
-        xc_max = t_pos[0][N.argmax(t_pos[0])]
-        yc_min = t_pos[1][N.argmin(t_pos[1])]
-        yc_max = t_pos[1][N.argmax(t_pos[1])]
+        if self.oneMirror:
 
-        if yc_min==yc_max:
-	        y_dist=self.hst_height
+            field_centre=self.pos
+            x=self.hst_w*1.2
+            y=self.hst_h*1.2
+            centre = N.c_[10.*self.sun_vec + field_centre]
+
         else:
-	        y_dist = yc_max - yc_min
-        if xc_min==xc_max:
-	        x_dist=self.hst_width
-        else:
-	        x_dist = xc_max - xc_min
 
-        xc_cent = (xc_min + xc_max) / 2.
-        yc_cent = (yc_min + yc_max) / 2.
-        field_centre = N.r_[xc_cent, yc_cent, 0.]
+            t_pos = self.pos.T        
+            xc_min = t_pos[0][N.argmin(t_pos[0])]
+            xc_max = t_pos[0][N.argmax(t_pos[0])]
+            yc_min = t_pos[1][N.argmin(t_pos[1])]
+            yc_max = t_pos[1][N.argmax(t_pos[1])]
 
-        # disc source covering entire field area:
-        radius = 1.10 * math.sqrt((x_dist/2.)**2 + (y_dist/2.)**2)
-        x=x_dist*1.2
-        y=y_dist*1.2
-        centre = N.c_[200.*self.sun_vec + field_centre]
+            if yc_min==yc_max:
+	            y_dist=self.hst_height
+            else:
+	            y_dist = yc_max - yc_min
+            if xc_min==xc_max:
+	            x_dist=self.hst_width
+            else:
+	            x_dist = xc_max - xc_min
+
+            xc_cent = (xc_min + xc_max) / 2.
+            yc_cent = (yc_min + yc_max) / 2.
+            field_centre = N.r_[xc_cent, yc_cent, 0.]
+
+            # disc source covering entire field area:
+            radius = 1.10 * math.sqrt((x_dist/2.)**2 + (y_dist/2.)**2)
+            x=x_dist*1.2
+            y=y_dist*1.2
+            centre = N.c_[200.*self.sun_vec + field_centre]
 
         direction = N.array(-self.sun_vec)	
 

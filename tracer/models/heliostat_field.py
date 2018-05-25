@@ -18,7 +18,7 @@ from numpy import r_
 import numpy as N
 import types
 import math 
-#from ..CoIn_rendering.rendering_blades import *
+from ..CoIn_rendering.rendering_blades import *
 
 from ..assembly import Assembly
 from ..spatial_geometry import rotx, roty, rotz
@@ -32,9 +32,9 @@ from .. import optics_callables as opt
 
 from .one_sided_mirror import rect_one_sided_mirror, rect_para_one_sided_mirror, perfect_rect_para_one_sided_mirror
 
-#from ..package_dev.bladed_receiver import bladed_receiver
-#from ..package_dev.bladed_receiver_tube import bladed_receiver_tube
-#from ..package_dev.test_surface_reflection import receiver_test_refl
+from ..package_dev.bladed_receiver import bladed_receiver
+from ..package_dev.bladed_receiver_tube import bladed_receiver_tube
+from ..package_dev.test_surface_reflection import receiver_test_refl
 
 
 class TowerScene(Assembly):
@@ -64,11 +64,8 @@ class TowerScene(Assembly):
                 tracking=TiltRoll(self.sun_vec,self.one_mirror)	
             elif tracking_mode =='AzEl':
                 tracking=AzElTrackings(self.sun_vec,self.one_mirror) 
-
-            if self.one_mirror:
-                tracking.aim_to_sun(-field.pos, aiming.aiming_points, self.one_mirror)
-            else:		
-                tracking.aim_to_sun(-layout.pos, aiming.aiming_points, self.one_mirror)
+	
+            tracking.aim_to_sun(-field.pos, aiming.aiming_points, self.one_mirror)
             tracking(field)
 
             if receiver==None:
@@ -77,6 +74,8 @@ class TowerScene(Assembly):
             else:
                 mount_rec(receiver._rec)
                 self.system=Assembly(objects=[receiver._rec], subassemblies=[heliostats])
+            self.aiming_points=aiming.aiming_points 
+
 
 
 class MountReceiver:		
@@ -300,7 +299,7 @@ class FieldLayout:
 
 
 class KnownField(FieldLayout):
-    def __init__(self, filename,pos=N.zeros(3),foc=N.zeros(3)):
+    def __init__(self, filename=None,pos=N.zeros(3),foc=0.):
         '''
         For already known field layouts.
 
@@ -315,18 +314,16 @@ class KnownField(FieldLayout):
         self.pos -An array with an x,y,z row for each heliostat (shape n,3)
         self.focals- An array with focal length for each heliostat (shape n,1)
         '''
-        if (any(pos) == 0. and any(foc)==0.):
+        if filename==None:
+            self.pos=pos
+            self.focals=foc
+        else:
             info=N.loadtxt(filename, delimiter=',', skiprows=1)
             self.pos=info[:,:3]
             self.focals=info[:,3]
 
             if len(info[0,:])>4:
-                self.aiming=info[:,4:]
-
-        else:
-            self.pos=pos
-            self.focals=foc
-				
+                self.aiming=info[:,4:]				
 		
 class RadialStaggerLT(FieldLayout):
 
@@ -414,7 +411,8 @@ class HeliostatGenerator:
 
         if self.one_mirror:
             if self.index !=-1:
-                self.pos, self.foc=layout.get_one_mirror(self.index)	
+                self.pos, self.foc=layout.get_one_mirror(self.index)
+	
         else:
             self.pos=layout.pos
 
@@ -714,9 +712,6 @@ class TiltRoll(TrackingSystem):
 
             hstat_alfa=-N.arctan2(self.hstat_norm[1],self.hstat_norm[2])
             hstat_beta=N.arcsin(self.hstat_norm[0])
-            print hstat_alfa
-            print self.hstat_norm[1]
-            print self.hstat_norm[2]
 
             alfa_rot = rotx(hstat_alfa)
             beta_rot = roty(hstat_beta)
