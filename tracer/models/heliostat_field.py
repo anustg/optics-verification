@@ -18,7 +18,7 @@ from numpy import r_
 import numpy as N
 import types
 import math 
-#from ..CoIn_rendering.rendering_blades import *
+from ..CoIn_rendering.rendering_blades import *
 
 from ..assembly import Assembly
 from ..spatial_geometry import rotx, roty, rotz
@@ -32,13 +32,13 @@ from .. import optics_callables as opt
 
 from .one_sided_mirror import rect_one_sided_mirror, rect_para_one_sided_mirror, perfect_rect_para_one_sided_mirror
 
-#from ..package_dev.bladed_receiver import bladed_receiver
-#from ..package_dev.bladed_receiver_tube import bladed_receiver_tube
-#from ..package_dev.test_surface_reflection import receiver_test_refl
+from ..package_dev.bladed_receiver import bladed_receiver
+from ..package_dev.bladed_receiver_tube import bladed_receiver_tube
+from ..package_dev.test_surface_reflection import receiver_test_refl
 
 
 class TowerScene(Assembly):
-    def __init__(self,sun_vec, one_mirror=False):
+    def __init__(self,sun_vec=None, one_mirror=False):
         self.one_mirror=one_mirror
         self.sun_vec=sun_vec
 
@@ -415,6 +415,7 @@ class HeliostatGenerator:
 	
         else:
             self.pos=layout.pos
+            self.foc=layout.focals
 
 
         if self.curved:
@@ -642,10 +643,15 @@ class AzElTrackings(TrackingSystem):
             norm_y=self.hstat_norm[1]
             norm_z=self.hstat_norm[2]
 
-            if norm_x>=0:
-                hstat_az = N.arccos(-norm_y/N.sqrt(norm_x**2+norm_y**2))                                     
-            elif norm_x<0:
-                hstat_az = N.arccos(norm_y/N.sqrt(norm_x**2+norm_y**2)) +N.pi
+            if norm_x**2+norm_y**2<=1e-20:
+                hstat_az=0.
+
+            else:
+
+                if norm_x>=0:
+                    hstat_az = N.arccos(-norm_y/N.sqrt(norm_x**2+norm_y**2))                                     
+                elif norm_x<0:
+                    hstat_az = N.arccos(norm_y/N.sqrt(norm_x**2+norm_y**2)) +N.pi
  	
             az_rot = rotz(hstat_az)
             elev_rot = rotx(hstat_elev)

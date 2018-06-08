@@ -52,13 +52,15 @@ class RealReflective(object):
     def __call__(self, geometry, rays, selector):
         ideal_normals = geometry.get_normals()
 
-        # Creates projection of error_normal on the surface (sin can be avoided because of very small angles).
-
+        # Creates projection of error_normal on the surface
 
         #------------------------------
-        #          pill box
+        #     pillbox distribution
         #------------------------------
         if self._slope=='pillbox_angles':
+            '''
+            the sampling method used in Tonatiuh
+            '''
             err_theta=N.random.uniform(low=0.,high=self._sig, size=N.shape(ideal_normals[1]))
             err_phi=N.random.uniform(low=0.,high=2.*N.pi, size=N.shape(ideal_normals[1]))
 
@@ -66,59 +68,24 @@ class RealReflective(object):
             normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
             normal_errors_z=N.cos(err_theta)
 
-        if self._slope=='pillbox_sphere':
+        if self._slope=='pillbox':
+            '''
+            the right implementation
+            '''
             a1=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
             a2=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
 
             err_phi=2.*N.pi*a1
-            err_theta=N.arccos(1.-a2*(1.-N.cos(self._sig)))
-
-
-            normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
-            normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
-            normal_errors_z=N.cos(err_theta)
-
-
-        if self._slope=='pillbox_distance':            
-            err_xz=N.random.uniform(low=-self._sig,high=self._sig, size=N.shape(ideal_normals[1]))
-            err_yz=N.random.uniform(low=-self._sig,high=self._sig, size=N.shape(ideal_normals[1]))
-        
-            normal_errors_x=err_xz
-            normal_errors_y=err_yz
-            normal_errors_z=N.ones(N.shape(ideal_normals[1]))
-   
-
-        #------------------------------
-        #          normal 
-        #------------------------------
-        if self._slope=='normal_angles':
-            #err_theta=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
-            theta=N.linspace(0.,4.*self._sig,1000)
-            cdf=N.array(())
-            for i in xrange(len(theta)-1):
-                dt=N.linspace(theta[i],theta[i+1],500)
-                pdf=1./N.sqrt(2.*N.pi)/self._sig*N.exp(-dt**2/2./self._sig**2)
-                integral=N.trapz(pdf,dt) 
-                cdf=N.append(cdf,N.sum(integral)/0.5)
-            num= len(ideal_normals[1])
-            err_theta=N.array(())
-            for i in xrange(len(theta)-1):
-                err_theta=N.append(err_theta,N.random.uniform(low=theta[i],high=theta[i+1],size=N.round(cdf[i]*num)))
-
-
-            if len(err_theta) < num:
-                err_theta = N.hstack((err_theta,N.random.uniform(low=0., high=4.*self._sig, size=num-len(err_theta))))
-            if len(err_theta) > num:
-                err_theta = err_theta[:num]
-
-
-            err_phi=N.random.uniform(low=0.,high=2.*N.pi, size=N.shape(ideal_normals[1]))
+            #err_theta=N.arcsin(N.sqrt(a2)*N.sin(self._sig))
+            err_theta=self._sig*N.sqrt(a2) # simplification
 
             normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
             normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
-            normal_errors_z=N.cos(err_theta)
- 
+            normal_errors_z=N.cos(err_theta)   
 
+        #------------------------------
+        #     Normal distribution 
+        #------------------------------
         if self._slope=='normal_sphere':
             a1=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
             a2=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
@@ -126,28 +93,14 @@ class RealReflective(object):
             err_phi=2.*N.pi*a1
             err_theta=N.arcsin(N.sqrt(-2.*self._sig**2*N.log(a2)))
 
-
             normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
             normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
             normal_errors_z=N.cos(err_theta)
 
-        if self._slope=='normal_polar':
-
-
-            err_phi= N.random.uniform(low=0., high=N.pi, size=N.shape(ideal_normals[1]))
-            err_theta=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
-
-
-            normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
-            normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
-            normal_errors_z=N.cos(err_theta)
-            print '******normal polar slope error **********'    
-
-
         #------------------------------
-        #       normal simplified
+        #    normal simplified
         #------------------------------
-        if self._slope=='normal_distance':
+        if self._slope=='normal':
             err_xz=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
             err_yz=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
         
@@ -157,8 +110,7 @@ class RealReflective(object):
 
 
         normal_errors = N.vstack((normal_errors_x, normal_errors_y, normal_errors_z)) 
-
-        
+     
         # Determine rotation matrices for each normal:
         rots_norms = rotation_to_z(ideal_normals.T)
         if rots_norms.ndim==2:
