@@ -30,7 +30,7 @@ class RayTracing:
         self.hst_w=1.85
         self.hst_h=2.44
         reflectivity=0.9
-        slope_type='normal' #'normal_sphere' or 'pillbox_sphere' or 'perfect'
+        slope_type='normal' #'normal' or 'pillbox' or 'perfect'-- for one mirror only
         slope_error=1.64e-3 #rad (0 is a perfect mirror)
         curved=True # or False: flat mirror
         self.oneMirror=False # or True: for simulating just one mirror
