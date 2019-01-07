@@ -40,7 +40,12 @@ class RealReflective(object):
     Arguments:
     absorptivity - the amount of energy absorbed before reflection
     sigma_xy - Standard deviation of the reflected ray in the local x and y directions. 
-    
+    slope - str, describing the distribution and sampling method of the slope error. The current options are:
+        (1) 'pillbox' - function inverse method
+        (2) 'pillbox_Tonatiuh_v2.2.3' - incorrect method
+        (3) 'normal_angle' - function inverse method
+        (4) 'normal' - simplified, sample the directional vectors directly
+   
     Returns:
     Reflective - a function with the signature required by surface
     '''
@@ -57,9 +62,9 @@ class RealReflective(object):
         #------------------------------
         #     pillbox distribution
         #------------------------------
-        if self._slope=='pillbox_angles':
+        if self._slope=='pillbox_Tonatiuh_v2.2.3':
             '''
-            the sampling method used in Tonatiuh
+            Test the incorrect sampling method used in Tonatiuh v2.2.3
             '''
             err_theta=N.random.uniform(low=0.,high=self._sig, size=N.shape(ideal_normals[1]))
             err_phi=N.random.uniform(low=0.,high=2.*N.pi, size=N.shape(ideal_normals[1]))
@@ -68,9 +73,9 @@ class RealReflective(object):
             normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
             normal_errors_z=N.cos(err_theta)
 
-        if self._slope=='pillbox':
+        elif self._slope=='pillbox':
             '''
-            the right implementation
+            the right implementation of pillbox slope error
             '''
             a1=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
             a2=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
@@ -86,12 +91,15 @@ class RealReflective(object):
         #------------------------------
         #     Normal distribution 
         #------------------------------
-        if self._slope=='normal_sphere':
+        elif self._slope=='normal_angle':
+            '''
+            using the function inverse method to sample theta and phi
+            '''
             a1=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
             a2=N.random.uniform(low=0.,high=1.,size=N.shape(ideal_normals[1]))
 
             err_phi=2.*N.pi*a1
-            err_theta=N.arcsin(N.sqrt(-2.*self._sig**2*N.log(a2)))
+            err_theta=self._sig*N.sqrt(-2.*N.log(a2))
 
             normal_errors_x=N.sin(err_theta)*N.cos(err_phi)
             normal_errors_y=N.sin(err_theta)*N.sin(err_phi)
@@ -100,7 +108,10 @@ class RealReflective(object):
         #------------------------------
         #    normal simplified
         #------------------------------
-        if self._slope=='normal':
+        elif self._slope=='normal':
+            '''
+            sample the directional vectors directly 
+            '''
             err_xz=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
             err_yz=N.random.normal(scale=self._sig, size=N.shape(ideal_normals[1]))
         
