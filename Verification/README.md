@@ -25,7 +25,7 @@ It is about to be submitted to ***Solar Energy***.
 
 * **Restuls**:
     - Data files from each tool for each case
-    - Plots and comparisons
+    - Plots and comparison
 
 
 
