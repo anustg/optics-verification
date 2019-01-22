@@ -38,7 +38,7 @@ def single_ray_source(position, direction, flux=None):
     singray.set_energy(flux*N.ones(1))
     return singray
 
-def pillbox_sunshape_directions(num_rays, ang_range):
+def pillbox_sunshape_directions(num_rays, ang_rang):
     """
     Calculates directions for a ray bundles with ``num_rays`` rays, distributed
     as a pillbox sunshape shining toward the +Z axis, and deviating from it by
@@ -53,15 +53,14 @@ def pillbox_sunshape_directions(num_rays, ang_range):
     A (3, num_rays) array whose each column is a unit direction vector for one
         ray, distributed to match a pillbox sunshape.
     """
-    # Diffuse divergence from +Z:
-    # development based on eq. 2.12  from [1]
-    xi1 = random.uniform(high=2.*N.pi, size=num_rays)
-    xi2 = random.uniform(size=num_rays)
-    #theta = N.arcsin(N.sin(ang_range)*N.sqrt(xi2))
-    theta=ang_range*N.sqrt(xi2)
 
-    sin_th = N.sin(theta)
-    a = N.vstack((N.cos(xi1)*sin_th, N.sin(xi1)*sin_th , N.cos(theta)))
+    x1=N.random.uniform(size=num_rays)
+    x2=N.random.uniform(size=num_rays)
+
+    theta=N.sqrt(x1)*ang_rang
+    phi=x2*2.*N.pi
+
+    a = N.vstack((N.cos(phi)*N.sin(theta), N.sin(phi)*N.sin(theta) , N.cos(theta)))
 
     return a
 
@@ -93,91 +92,6 @@ def gaussian_sunshape_directions(num_rays, sigma, simplified=True):
 
         a = N.vstack((N.cos(phi)*N.sin(theta), N.sin(phi)*N.sin(theta) , N.cos(theta)))
     return a
-    
-
-def buie_sunshape_directions(num_rays, CSR, pre_process_CSR=True):
-    '''
-    Generate the directions for a ray bundles according to Buie et al.: "Sunshape distributions for terrestrial simulations." Solar Energy 74 (2003) 113-122 (DOI: 10.1016/S0038-092X(03)00125-7).
-
-    Arguments:
-    num_rays - number of rays in the bundle
-    CSR - Circumsolar ratio, the χ in Buie's model
-    pre_proces_CSR - bool, the proportion of the energy in the circumsolar region (CSR)
-                     obtained from Buie’s model is not equal to the input parameter χ.
-                     To correct this issue, the χ can be calibrated to make sure that
-                     it will be the same as the CSR that is calculated by integrating
-                     the radiance profile in the Buie sunshape. 
-
-    Returns:
-    A (3, num_rays) array whose each column is a unit direction vector for one
-        ray, distributed to match a Buie sunshape distribution.
-    '''
-    if pre_process_CSR:
-        # The correction polynormial is developed by Charles-Alexis Asselineau
-        if CSR<=0.1:
-            CSR = -2.245e+03*CSR**4.+5.207e+02*CSR**3.-3.939e+01*CSR**2.+1.891e+00*CSR+8e-03
-        else:
-            CSR = 1.973*CSR**4.-2.481*CSR**3.+0.607*CSR**2.+1.151*CSR-0.020   
-
-    theta_1= 4.65e-3 #angular width of the solar disk, radian       
-    theta_2=43.6e-3 # angular extent of the aureole, radian
-
- 	kappa=0.9*N.log(13.5*CSR)*N.power(CSR,-0.3)
-  	gamma=2.2*N.log(0.52*CSR)*N.power(CSR,0.43)-0.1
-
-    # discretise 
-  	theta_1_int=N.linspace(0.,theta_1,1000)
-  	theta_2_int=N.linspace(theta_1,theta_2,50)
-
-    # integral of the main disk 
-    I_1=N.zeros(len(theta_1_int))
-    for i in xrange(len(theta_1_int)-1):
-		#differencial interval
-        tt=N.linspace(theta_1_int[i],theta_1_int[i+1],100)
-		# intensity according to buie sunshape
-        I=N.cos(0.326*tt*1000.)/N.cos(0.308*tt*1000.)
-		# integral(theta[i]~theta[i+1]) cost*sint*dt
-        I_1[i]=N.trapz(I*N.cos(tt)*N.sin(tt), tt)
-        #I_1[i]=2.*N.pi*N.trapz(I*tt*1000.,tt*1000.)
-    integ_1=N.sum(I_1)
-
-
-    # integral of the csr part 
-    I_2=N.zeros(len(theta_2_int))       
-    for i in xrange(len(theta_2_int)-1):
-        tt=N.linspace(theta_2_int[i],theta_2_int[i+1],50)
-        I=N.exp(kappa)*N.power(tt*1000.,gamma)
-        I_2[i]=N.trapz(I*N.cos(tt)*N.sin(tt), tt)
-        #I_2[i]= 2.*N.pi*N.exp(kappa)/(gamma+2.)*((theta_2_int[i+1])**(gamma+2.)-(theta_2_int[i])**(gamma+2.))
-        #print I_2[i]
-    integ_2=N.sum(I_2)
- 
-    integral=integ_1+integ_2
-
-	# assign the theta according to CDF 
-    theta=N.array(())
-    for i in xrange(len(theta_1_int)-1):
-        theta=N.append(theta,N.random.uniform(low=theta_1_int[i],high=theta_1_int[i+1],size=int(N.round(I_1[i]/integral*num_rays))))
-
-    for i in xrange(len(theta_2_int)-1):
-        theta=N.append(theta,N.random.uniform(low=theta_2_int[i],high=theta_2_int[i+1],size=int(N.round(I_2[i]/integral*num_rays))))
-
-
-    if len(theta) < num_rays:
-        theta = N.hstack((theta,N.random.uniform(low=0., high=theta_2, size=num_rays-len(theta))))
-    if len(theta) > num_rays:
-        theta = theta[:num_rays]
-	
-	# important! shuffle the sequence of theta	
-	N.random.shuffle(theta)
-
-    phi = N.random.uniform(low=0., high=2.*N.pi, size=num_rays)
-
-    a = N.vstack((N.cos(phi)*N.sin(theta), N.sin(phi)*N.sin(theta) , N.cos(theta)))
-
-    return a
-
-
 
 def collimated_directions(num_rays):
 
@@ -200,8 +114,140 @@ def collimated_directions(num_rays):
 
     return a
 
+class buie_integration:
 
-def rect_ray_bundle(num_rays, center, direction, x, y, sunshape, ang_rang, flux=None):
+    def __init__(self, CSR, preproc_CSR):
+        self.CSR=CSR
+        self.theta_1=4.65e-3
+        self.theta_2=43.6e-3
+
+        if preproc_CSR=='CA':
+            self.CSR=self.CSR_calibration('CA')
+        elif preproc_CSR=='tonatiuh':
+            self.CSR=self.CSR_calibration('tonatiuh')    
+
+        self.sample, self.FI=self.int_sun_region()
+
+
+    def CSR_calibration(self, source):
+        '''
+        pre proceed CSR to true value
+        source - 'CA' from Charles; or 'Tonatiuh' from Tonatiuh
+        '''
+        csr=self.CSR
+        if source=='CA':
+            if csr<=0.1:
+                CSR = -2.245e+03*csr**4.+5.207e+02*csr**3.-3.939e+01*csr**2.+1.891e+00*csr+8e-03
+            else:
+                CSR = 1.973*csr**4.-2.481*csr**3.+0.607*csr**2.+1.151*csr-0.020   
+
+        elif source=='tonatiuh':
+
+            if csr>0.145:
+                CSR = -0.04419909985804843 + csr * (1.401323894233574 + csr * (-0.3639746714505299 + csr * (-0.9579768560161194 + 1.1550475450828657 * csr)))
+		
+            elif csr>0.035 and csr <=0.145:
+                CSR=0.022652077593662934 + csr * (0.5252380349996234 + (2.5484334534423887 - 0.8763755326550412 * csr)) * csr
+		
+            else:
+                CSR = 0.004733749294807862 + csr* (4.716738065192151 + csr * (-463.506669149804 + csr * ( 24745.88727411664+csr * (-606122.7511711778 + 5521693.445014727 * csr) ) ) )
+
+        return CSR
+
+
+
+    def int_csr_region(self, theta):
+
+        self.kappa=0.9*N.log(13.5*self.CSR)*N.power(self.CSR,-0.3)
+        self.gamma=2.2*N.log(0.52*self.CSR)*N.power(self.CSR,0.43)-0.1
+
+        # the circuim solar region
+        I2=10.**(self.gamma*3.)*N.exp(self.kappa)/(self.gamma+2.)*(theta**(self.gamma+2.)-self.theta_1**(self.gamma+2.))
+        return I2 
+   
+    def func(self, theta):
+        '''
+        theta is in radian
+        '''
+        f=theta*N.cos(theta*326.)/N.cos(theta*308.)
+
+        return f 
+
+    def numerical_int(self, x1, x2, n):
+
+        dx=(x2-x1)/float(n)
+        I=0.
+        for k in xrange(n):
+            I+=dx*self.func(x1+float(k+0.5)*dx)
+        return I
+
+    def int_disk_region(self, initial=False):
+        I1=self.numerical_int(0., self.theta_1, 100)
+
+        theta=N.linspace(0., self.theta_1, 10000)
+        I=N.array([])
+
+        i=1
+        for t in theta:
+            Ii=self.numerical_int(0, t, 100)  
+            #I0+=Ii
+            I=N.append(I, Ii)
+            i+=1
+        PI=I/I1
+
+        return I1, theta, PI
+
+
+    def int_sun_region(self):
+
+        I1=self.numerical_int(0., self.theta_1, 100)
+        I2=self.int_csr_region(self.theta_2)
+
+        theta=N.linspace(0., self.theta_1, 10000)
+        theta2=N.linspace(self.theta_1, self.theta_2, 1000)
+        I=N.array([])
+
+        for t in theta:
+            Ii=self.numerical_int(0, t, 100)  
+            I=N.append(I, Ii)
+
+        for t2 in theta2:
+            Ii=self.int_csr_region(t2)
+            I=N.append(I, Ii+I1)
+
+        PI=I/(I1+I2)
+
+        THETA=N.append(theta, theta2) 
+
+        return THETA, PI
+
+
+def buie_sunshape_directions(num_rays, sample, FI):
+
+    """
+    Calculates directions for a ray bundles with ``num_rays`` rays, distributed 	
+    according to Buie et al.: "Sunshape distributions for terrestrial simulations." Solar Energy 74 (2003) 113-122 (DOI: 10.1016/S0038-092X(03)00125-7).
+
+    Arguments:
+    num_rays - number of rays to generate directions for.
+    CSR - Circumsolar ratio, fraction of the incoming solar energy which incident angle is greater than the angle subtended by the solar disc.
+    
+    Returns:
+    A (3, num_rays) array whose each column is a unit direction vector for one
+        ray, distributed to match buie sunshape.
+    """
+    
+    x1=N.random.uniform(low=0., high=1., size=num_rays) 
+    theta=N.interp(x1, FI, sample)
+
+    phi = N.random.uniform(low=0., high=2.*N.pi, size=num_rays)
+
+    a = N.vstack((N.cos(phi)*N.sin(theta), N.sin(phi)*N.sin(theta) , N.cos(theta)))
+   
+    return a
+
+
+def rect_ray_bundle(num_rays, center, direction, x, y, sunshape, ang_rang, flux=None, BUIE=None):
     '''
     generate a rectancular ray bundle for different sunshape options
 
@@ -221,12 +267,12 @@ def rect_ray_bundle(num_rays, center, direction, x, y, sunshape, ang_rang, flux=
     '''
     if sunshape=='pillbox':
         a= pillbox_sunshape_directions(num_rays, ang_rang)
-    elif sunshape=='Gaussian': 
+    elif sunshape=='gaussian': 
         a= gaussian_sunshape_directions(num_rays, ang_rang)
-    elif sunshape=='Buie':
-        a= buie_sunshape_directions(num_rays, ang_rang)
+    elif sunshape=='buie':   
+        a=buie_sunshape_directions(num_rays, BUIE.sample, BUIE.FI)
     elif sunshape=='collimated':
-        a= collimated_directions(num_rays, ang_rang)
+        a= collimated_directions(num_rays)
 
     # making sure the rect bundle can cover the whole region of interest
     x*=1.2
