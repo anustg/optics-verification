@@ -1,10 +1,13 @@
+import math
 import numpy as N
 from scipy.constants import degree
 
-from tracer.models.heliostat_field import *
-from tracer.models.sunshape_pillbox import *
+from tracer.models.heliostat_field import HeliostatGenerator, KnownField, FlatOneSidedReceiver, MountReceiver, solar_vector, TowerScene
+#from tracer.models.sunshape_pillbox import *
+from tracer.sources import rect_ray_bundle
 from tracer.tracer_engine import TracerEngine
 from tracer.CoIn_rendering.rendering import *
+
 
 
 class RayTracing:
@@ -62,7 +65,7 @@ class RayTracing:
         layout=KnownField(hst_file,pos,foc)
 
         # tracking
-        tracking_mode='TiltRoll' # 'AzEl'or 'TiltRoll'
+        tracking_mode='AzEl' # 'AzEl'or 'TiltRoll'
 
         # aiming
         aiming_mode='SinglePoint' # 'MultiFixed' or 'SinglePoint'
@@ -82,7 +85,7 @@ class RayTracing:
         #--------------
         #     solar
         #--------------
-        sunshape='pillbox'
+        self.sunshape='pillbox'
         self.sigma=4.65e-3
         self.DNI=1000.
         sun_az=180.
@@ -135,7 +138,8 @@ class RayTracing:
 
         direction = N.array(-self.sun_vec)	
 
-        rays=pillbox_rect_bundle(self.num_rays, centre, direction, x,y, self.sigma, self.DNI)
+        #rays=pillbox_rect_bundle(self.num_rays, centre, direction, x,y, self.sigma, self.DNI)
+        rays=rect_ray_bundle(self.num_rays, centre, direction, x, y, self.sunshape, ang_rang=self.sigma, flux=self.DNI)
         return rays
 
 
