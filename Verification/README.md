@@ -25,7 +25,14 @@ It is about to be submitted to ***Solar Energy***.
 
 * **Restuls**:
     - Data files from each tool for each case
-    - Plots and comparison
+    - Figures and comparison
+
+* **Tracer script**
+    - master.py: the script of running Tracer for all the test cases
+    - run.py: the script of running Tracer for an individual case
+    - postprocs.py: the script of postprocessing results, for comparison with other tools
+    - plots: includes all the scripts for generating the comparison figures 
+   
 
 
 
