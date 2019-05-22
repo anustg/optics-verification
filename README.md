@@ -12,7 +12,7 @@ The co-authors are:
 * **Benjamin Piaud** from Méso-Star Company, Toulouse, France
 
 
-The title of the paper is: **Verification of Optical Modeling on Sunshape and Surface Slope Error**
+The title of the paper is: **Verification of Optical Modeling of Sunshape and Surface Slope Error for Concentrating Solar Power Systems**
 It is about to be submitted to ***Solar Energy***.
 
 
