@@ -1,3 +1,0 @@
-recursive-include docs *.txt *.rst
-recursive-include examples *.py
-include LICENSE
