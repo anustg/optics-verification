@@ -9,10 +9,10 @@ The details are recorded and shared in this Github repository for people who are
     - Parameters 
     - Heliosatat field in the Round 3 tests
 
-* **Restuls**:
+* **Results**:
     - A summary of all the agreed results
         (taken from the average value of Tonatiuh, Tracer, Solstice, Soltrace and Heliosiom, 
-         with the errors representing the confidence interval which follows the 3 sigm rule)
+         with the errors representing the confidence interval which follows the 3 sigma rule)
   
     - Data files from each tool for each case
     - Figures and comparison
