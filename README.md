@@ -1,6 +1,6 @@
 # Verification 
 
-The verification involves six optical modelling tools in Concentrating Solar Power (CSP) research, including: **SolTrace**, **Tonatiuh**, **Tracer**, , **Solstice**, **Heliosim** and **SolarPILOT**. Three rounds of tests were progressed to compare and verify the results from these six tools.
+The verification involves six optical modelling tools in Concentrating Solar Power (CSP) research, including: **SolTrace**, **Tonatiuh**, **Tracer**,  **Solstice**, **Heliosim** and **SolarPILOT**. Three rounds of tests were progressed to compare and verify the results from these six tools.
 
 The details are recorded and shared in this Github repository for people who are interested. The content includs:
 
@@ -24,6 +24,7 @@ The details are recorded and shared in this Github repository for people who are
     - plots: includes all the scripts for generating the comparison figures 
    
 
+
 The co-authors are:
 * **Ye Wang**, **Charles-Alexis Asselineau**, **John Pye** from the Australian National University (ANU) 
 * **Daniel Potter**, **Clotilde Corsi**, **Jin-soo Kim** from CSIRO Energy, Newcastle, Australia
@@ -31,6 +32,7 @@ The co-authors are:
 * **Michael Wagner** from National Renewable Energy Laboratory, Golden, CO, USA
 * **Cyril Caliot** from Processes, Materials and Solar Energy Laboratory, PROMES, CNRS, Font-Romeu-Odeillo, France
 * **Benjamin Piaud** from Méso-Star Company, Toulouse, France
+
 
 
 The title of the paper is: **Verification of Optical Modeling of Sunshape and Surface Slope Error for Concentrating Solar Power Systems**
