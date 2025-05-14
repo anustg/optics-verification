@@ -35,8 +35,8 @@ The co-authors are:
 
 
 
-The title of the paper is: **Verification of Optical Modeling of Sunshape and Surface Slope Error for Concentrating Solar Power Systems**
-It is about to be submitted to ***Solar Energy***.
+**Cite this work as**:
+Wang, Y., Potter, D., Asselineau, C.A., Corsi, C., Wagner, M., Caliot, C., Piaud, B., Blanco, M., Kim, J.S. and Pye, J., 2020. Verification of optical modelling of sunshape and surface slope error for concentrating solar power systems. Solar Energy, 195, pp.461-474. https://doi.org/10.1016/j.solener.2019.11.035 
 
 
    
